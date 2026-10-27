@@ -70,7 +70,8 @@ defmodule Wiki.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:uxid, "~> 2.10"}
+      {:uxid, "~> 2.10"},
+      {:earmark, "~> 1.4"}
     ]
   end
 
@@ -86,7 +87,7 @@ defmodule Wiki.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
+      "assets.setup": ["cmd npm install --prefix assets", "tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["compile", "tailwind wiki", "esbuild wiki"],
       "assets.deploy": [
         "tailwind wiki --minify",
