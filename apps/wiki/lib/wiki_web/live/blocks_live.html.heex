@@ -99,6 +99,39 @@
             >
               <.icon name="hero-trash" class="h-4 w-4" />
             </button>
+            <div class="dropdown dropdown-end">
+              <button tabindex="0" class="btn btn-ghost btn-xs" title="More options">
+                <.icon name="hero-ellipsis-vertical" class="h-4 w-4" />
+              </button>
+              <ul
+                tabindex="0"
+                class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-1 shadow-md border border-base-300 text-sm"
+              >
+                <li
+                  :for={{ext_name, options} <- Wiki.Block.Extensions.options_for(block)}
+                >
+                  <details>
+                    <summary class="font-medium">{ext_name}</summary>
+                    <ul>
+                      <li :for={option <- options}>
+                        <button
+                          phx-click="block_extension_action"
+                          phx-value-ext-event={option.event}
+                          phx-value-block-id={option.block_id}
+                          class="flex items-center gap-2 w-full"
+                        >
+                          <.icon :if={option.icon} name={option.icon} class="h-4 w-4 shrink-0" />
+                          {option.label}
+                        </button>
+                      </li>
+                    </ul>
+                  </details>
+                </li>
+                <li :if={Wiki.Block.Extensions.registered() == []}>
+                  <span class="opacity-40 text-xs">No extensions active</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
         <div class="block-preview text-sm">

@@ -85,6 +85,12 @@ defmodule WikiWeb.BlocksLive do
     end
   end
 
+  @impl true
+  def handle_event("block_extension_action", %{"ext-event" => event, "block-id" => block_id}, socket) do
+    # Placeholder: each extension will handle its own events in a future iteration
+    {:noreply, put_flash(socket, :info, "#{event} triggered for block #{String.slice(block_id, 0, 8)}…")}
+  end
+
   defp render_markdown(content) do
     case Earmark.as_html(content) do
       {:ok, html, _} -> {:safe, html}
