@@ -41,6 +41,17 @@ defmodule Wiki.TextBlock do
     end
   end
 
+  def search_blocks(query) when is_binary(query) and query != "" do
+    Block
+    |> join(:inner, [b], bc in BlockContent, on: b.content_id == bc.id)
+    |> where([_, bc], fragment("? @@ plainto_tsquery('english', ?)", bc.search_vector, ^query))
+    |> order_by([_, bc], desc: fragment("ts_rank(?, plainto_tsquery('english', ?))", bc.search_vector, ^query))
+    |> preload(:block_content)
+    |> Repo.all()
+  end
+
+  def search_blocks(_), do: get_all_blocks()
+
   def delete_block(id) do
     case Repo.get(Block, id) |> Repo.preload(:block_content) do
       nil -> {:error, :not_found}

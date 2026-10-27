@@ -8,8 +8,19 @@ defmodule WikiWeb.BlocksLive do
      assign(socket,
        blocks: TextBlock.get_all_blocks(),
        show_editor: false,
-       editing_block_id: nil
+       editing_block_id: nil,
+       search_query: ""
      )}
+  end
+
+  @impl true
+  def handle_event("search", %{"query" => query}, socket) do
+    blocks =
+      query
+      |> String.trim()
+      |> TextBlock.search_blocks()
+
+    {:noreply, assign(socket, blocks: blocks, search_query: query)}
   end
 
   @impl true

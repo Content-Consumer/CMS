@@ -8,6 +8,17 @@
     </button>
   </div>
 
+  <form phx-change="search" phx-submit="search" class="mb-6">
+    <input
+      type="text"
+      name="query"
+      value={@search_query}
+      placeholder="Search blocks…"
+      phx-debounce="300"
+      class="input input-bordered w-full"
+    />
+  </form>
+
   <div :if={@show_editor} class="card bg-base-200 mb-8">
     <div class="card-body">
       <h2 class="card-title text-base">New Block</h2>
