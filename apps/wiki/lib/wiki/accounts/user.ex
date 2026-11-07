@@ -2,6 +2,9 @@ defmodule Wiki.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @primary_key {:id, UXID, autogenerate: true, prefix: "usr"}
+  @foreign_key_type :string
+
   schema "users" do
     field :email, :string
     field :password, :string, virtual: true, redact: true

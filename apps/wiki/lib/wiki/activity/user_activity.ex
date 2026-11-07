@@ -7,7 +7,7 @@ defmodule Wiki.Activity.UserActivity do
 
   schema "user_activities" do
     belongs_to :dimension, Wiki.Dimension.Dimension, foreign_key: :dimension_id
-    belongs_to :user, Wiki.Accounts.User, foreign_key: :user_id, type: :integer
+    belongs_to :user, Wiki.Accounts.User, foreign_key: :user_id
 
     timestamps(type: :utc_datetime)
   end
