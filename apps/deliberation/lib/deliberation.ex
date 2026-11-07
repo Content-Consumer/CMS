@@ -1,8 +1,24 @@
 defmodule Deliberation do
   @behaviour Wiki.Block.Extension
+  @behaviour Wiki.Extension
 
   alias Wiki.Block.Extension.Option
   alias Deliberation.BlockParams
+
+  @impl Wiki.Extension
+  def dimensions do
+    [
+      %{title: "Deliberation", description: "A space for structured group deliberation"}
+    ]
+  end
+
+  @impl Wiki.Extension
+  def activity_types do
+    [
+      %{dimension_title: "Deliberation", name: "Open Discussion", type: "deliberation"},
+      %{dimension_title: "Deliberation", name: "Voting", type: "deliberation_voting"}
+    ]
+  end
 
   @impl Wiki.Block.Extension
   def name, do: "Deliberation"

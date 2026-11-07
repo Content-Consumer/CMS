@@ -32,7 +32,7 @@ config :wiki, :scopes,
 config :wiki,
   ecto_repos: [Wiki.Repo],
   generators: [timestamp_type: :utc_datetime],
-  block_extensions: [Deliberation]
+  extensions: [Deliberation]
 
 # Configure the endpoint
 config :wiki, WikiWeb.Endpoint,

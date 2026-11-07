@@ -3,7 +3,7 @@ defmodule Wiki.Block.Extensions do
 
   @spec registered() :: [module()]
   def registered do
-    Application.get_env(:wiki, :block_extensions, [])
+    Application.get_env(:wiki, :extensions, [])
   end
 
   @spec options_for(block :: Wiki.TextBlock.Block.t()) :: [{String.t(), [Extension.Option.t()]}]
