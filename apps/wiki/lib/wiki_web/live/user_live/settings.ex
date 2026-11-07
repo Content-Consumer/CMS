@@ -8,7 +8,7 @@ defmodule WikiWeb.UserLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash}>
       <div class="text-center">
         <.header>
           Account Settings
@@ -65,6 +65,13 @@ defmodule WikiWeb.UserLive.Settings do
           Save Password
         </.button>
       </.form>
+
+      <div class="divider" />
+
+      <div>
+        <p class="text-sm font-medium mb-3">Appearance</p>
+        <Layouts.theme_toggle />
+      </div>
     </Layouts.app>
     """
   end

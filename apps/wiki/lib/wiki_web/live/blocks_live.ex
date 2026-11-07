@@ -12,7 +12,8 @@ defmodule WikiWeb.BlocksLive do
        search_query: "",
        text_selection: nil,
        argdown_kind: nil,
-       argdown_activities: []
+       argdown_activities: [],
+       breadcrumbs: [%{label: "Blocks", path: nil}]
      )}
   end
 

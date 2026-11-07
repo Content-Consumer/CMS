@@ -3,7 +3,7 @@ defmodule Deliberation.Web.ActivityLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, activity: nil, block_kinds: [])}
+    {:ok, assign(socket, activity: nil, block_kinds: [], breadcrumbs: [])}
   end
 
   @impl true
@@ -13,7 +13,16 @@ defmodule Deliberation.Web.ActivityLive do
     socket =
       if activity do
         block_kinds = Deliberation.list_blocks_for_activity(activity_id)
-        assign(socket, activity: activity, block_kinds: block_kinds, page_title: activity.name)
+        assign(socket,
+          activity: activity,
+          block_kinds: block_kinds,
+          page_title: activity.name,
+          breadcrumbs: [
+            %{label: "Deliberation", path: "/ext/deliberation"},
+            %{label: "Activities", path: "/ext/deliberation/activities"},
+            %{label: activity.name, path: nil}
+          ]
+        )
       else
         socket
         |> put_flash(:error, "Activity not found")
@@ -26,23 +35,15 @@ defmodule Deliberation.Web.ActivityLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.flash_group flash={@flash} />
+    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs}>
 
     <div class="max-w-3xl mx-auto px-4 py-8">
       <div class="mb-8">
-        <.link navigate="/ext/deliberation/activities" class="text-sm opacity-50 hover:opacity-100 flex items-center gap-1 mb-4">
-          <.icon name="hero-arrow-left" class="h-4 w-4" /> All activities
-        </.link>
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold">{@activity.name}</h1>
-            <p class="text-sm opacity-60 mt-1">
-              Deliberation extension ·
-              <span class="badge badge-sm badge-ghost">{@activity.activity_type.name}</span>
-              · <span class="opacity-60">{@activity.dimension.title}</span>
-            </p>
-          </div>
-        </div>
+        <h1 class="text-2xl font-bold">{@activity.name}</h1>
+        <p class="text-sm opacity-60 mt-1">
+          <span class="badge badge-sm badge-ghost">{@activity.activity_type.name}</span>
+          · {@activity.dimension.title}
+        </p>
       </div>
 
       <div class="space-y-3">
@@ -68,6 +69,7 @@ defmodule Deliberation.Web.ActivityLive do
         </div>
       </div>
     </div>
+    </Layouts.app>
     """
   end
 

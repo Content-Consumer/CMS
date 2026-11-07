@@ -25,50 +25,57 @@ defmodule WikiWeb.Layouts do
       </Layouts.app>
 
   """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
-
+  attr :flash, :map, required: true
+  attr :breadcrumbs, :list, default: []
   slot :inner_block, required: true
 
   def app(assigns) do
-    ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </header>
+    extensions =
+      Wiki.Block.Extensions.registered()
+      |> Enum.filter(fn mod ->
+        Code.ensure_loaded?(mod) && function_exported?(mod, :home_path, 0)
+      end)
+      |> Enum.map(fn mod -> %{name: mod.name(), path: mod.home_path()} end)
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
+    assigns = assign(assigns, :extensions, extensions)
+
+    ~H"""
+    <nav class="navbar bg-base-100 border-b border-base-300 px-4 min-h-12">
+      <div class="flex-1 flex items-center gap-1">
+        <.link navigate="/blocks" class="btn btn-ghost btn-sm btn-square" title="Blocks">
+          <.icon name="hero-document-text" class="h-5 w-5" />
+        </.link>
+        <div :if={@extensions != []} class="dropdown">
+          <button tabindex="0" class="btn btn-ghost btn-sm gap-1">
+            Extensions
+            <.icon name="hero-chevron-down-micro" class="h-3 w-3" />
+          </button>
+          <ul
+            tabindex="0"
+            class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-1 shadow-md border border-base-300 text-sm"
+          >
+            <li :for={ext <- @extensions}>
+              <.link navigate={ext.path}>{ext.name}</.link>
+            </li>
+          </ul>
+        </div>
       </div>
-    </main>
+    </nav>
+
+    <div :if={@breadcrumbs != []} class="text-sm breadcrumbs px-5 py-2 border-b border-base-200 bg-base-50">
+      <ul>
+        <li :for={crumb <- @breadcrumbs}>
+          <.link :if={crumb.path} navigate={crumb.path}>{crumb.label}</.link>
+          <span :if={is_nil(crumb.path)} class="opacity-60">{crumb.label}</span>
+        </li>
+      </ul>
+    </div>
 
     <.flash_group flash={@flash} />
+
+    <main>
+      {render_slot(@inner_block)}
+    </main>
     """
   end
 

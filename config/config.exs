@@ -35,6 +35,7 @@ config :wiki,
   extensions: [Deliberation],
   extension_routes: [
     {"/ext/deliberation", [
+      {"/", Deliberation.Web.HomeLive, :index},
       {"/activities", Deliberation.Web.ActivitiesLive, :index},
       {"/activities/new", Deliberation.Web.ActivitiesLive, :new},
       {"/activity/:activity_id", Deliberation.Web.ActivityLive, :show}

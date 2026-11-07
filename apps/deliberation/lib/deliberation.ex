@@ -86,6 +86,9 @@ defmodule Deliberation do
   def name, do: "Deliberation"
 
   @impl Wiki.Block.Extension
+  def home_path, do: "/ext/deliberation"
+
+  @impl Wiki.Block.Extension
   def block_options(block) do
     [
       %Option{

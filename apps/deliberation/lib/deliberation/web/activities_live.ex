@@ -6,7 +6,11 @@ defmodule Deliberation.Web.ActivitiesLive do
     {:ok,
      assign(socket,
        activities: Deliberation.list_argument_activities(),
-       page_title: "Argument Activities"
+       page_title: "Argument Activities",
+       breadcrumbs: [
+         %{label: "Deliberation", path: "/ext/deliberation"},
+         %{label: "Activities", path: nil}
+       ]
      )}
   end
 
@@ -36,8 +40,7 @@ defmodule Deliberation.Web.ActivitiesLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.flash_group flash={@flash} />
-
+    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs}>
     <div class="max-w-3xl mx-auto px-4 py-8">
       <div class="flex items-center justify-between mb-8">
         <div>
@@ -102,6 +105,7 @@ defmodule Deliberation.Web.ActivitiesLive do
         </div>
       </div>
     </div>
+    </Layouts.app>
     """
   end
 end
