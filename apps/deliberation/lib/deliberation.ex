@@ -3,21 +3,83 @@ defmodule Deliberation do
   @behaviour Wiki.Extension
 
   alias Wiki.Block.Extension.Option
-  alias Deliberation.BlockParams
+  alias Deliberation.{BlockParams, BlockKind}
+  alias Wiki.{Repo, TextBlock, Dimension, Activity, SubBlock}
+
+  @dimension_title "Deliberation"
+  @argument_type "argument"
 
   @impl Wiki.Extension
   def dimensions do
     [
-      %{title: "Deliberation", description: "A space for structured group deliberation"}
+      %{title: @dimension_title, description: "A space for structured group deliberation"}
     ]
   end
 
   @impl Wiki.Extension
   def activity_types do
     [
-      %{dimension_title: "Deliberation", name: "Open Discussion", type: "deliberation"},
-      %{dimension_title: "Deliberation", name: "Voting", type: "deliberation_voting"}
+      %{dimension_title: @dimension_title, name: "Open Discussion", type: "deliberation"},
+      %{dimension_title: @dimension_title, name: "Voting", type: "deliberation_voting"},
+      %{dimension_title: @dimension_title, name: "Argument", type: @argument_type}
     ]
+  end
+
+  def create_argdown_block(original_block_id, selected_text, from_ix, to_ix, kind, group_activity_id) do
+    Repo.transaction(fn ->
+      with {:ok, _sub_block} <- SubBlock.create_subblock(original_block_id, from_ix, to_ix),
+           {:ok, new_block} <- TextBlock.create_block(selected_text),
+           dim when not is_nil(dim) <- Dimension.get_dimension_by_title(@dimension_title),
+           {:ok, _} <- Dimension.add_block_to_dimension(new_block.id, dim.id),
+           {:ok, block_kind} <-
+             Repo.insert(BlockKind.changeset(%BlockKind{}, %{
+               block_id: new_block.id,
+               group_activity_id: group_activity_id,
+               kind: kind
+             })) do
+        {new_block, block_kind}
+      else
+        nil -> Repo.rollback(:dimension_not_found)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  def list_blocks_for_activity(activity_id) do
+    import Ecto.Query
+
+    BlockKind
+    |> where([bk], bk.group_activity_id == ^activity_id)
+    |> preload([bk], block: :block_content)
+    |> Repo.all()
+  end
+
+  def list_argument_activities do
+    case Dimension.get_dimension_by_title(@dimension_title) do
+      nil -> []
+      dim ->
+        case Activity.get_activity_type_by(dim.id, @argument_type) do
+          nil -> []
+          type -> Activity.list_group_activities_by_type_in_dimension(@argument_type, dim.id)
+                  |> Enum.map(&%{&1 | activity_type: type})
+        end
+    end
+  end
+
+  def create_argument_activity(name) do
+    require Logger
+    dim = Dimension.get_dimension_by_title(@dimension_title)
+    type = if dim, do: Activity.get_activity_type_by(dim.id, @argument_type)
+    Logger.warning("[Deliberation] create_argument_activity: dim=#{inspect(dim && dim.id)} type=#{inspect(type && type.id)}")
+
+    with dim when not is_nil(dim) <- dim,
+         type when not is_nil(type) <- type,
+         {:ok, activity} <- Activity.create_group_activity(dim.id, type.id, name) do
+      {:ok, %{activity | activity_type: type}}
+    else
+      nil -> {:error, :not_configured}
+      {:error, _} = error -> error
+    end
   end
 
   @impl Wiki.Block.Extension

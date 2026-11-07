@@ -9,7 +9,10 @@ defmodule WikiWeb.BlocksLive do
        blocks: TextBlock.get_all_blocks(),
        show_editor: false,
        editing_block_id: nil,
-       search_query: ""
+       search_query: "",
+       text_selection: nil,
+       argdown_kind: nil,
+       argdown_activities: []
      )}
   end
 
@@ -89,6 +92,52 @@ defmodule WikiWeb.BlocksLive do
   def handle_event("block_extension_action", %{"ext-event" => event, "block-id" => block_id}, socket) do
     # Placeholder: each extension will handle its own events in a future iteration
     {:noreply, put_flash(socket, :info, "#{event} triggered for block #{String.slice(block_id, 0, 8)}…")}
+  end
+
+  @impl true
+  def handle_event("text_selected", %{"block_id" => block_id, "text" => text, "from_ix" => from_ix, "to_ix" => to_ix}, socket) do
+    activities = Deliberation.list_argument_activities()
+
+    {:noreply,
+     assign(socket,
+       text_selection: %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix},
+       argdown_kind: nil,
+       argdown_activities: activities
+     )}
+  end
+
+  @impl true
+  def handle_event("argdown_dismiss", _params, socket) do
+    {:noreply, assign(socket, text_selection: nil, argdown_kind: nil)}
+  end
+
+  @impl true
+  def handle_event("argdown_select_kind", %{"kind" => kind}, socket) do
+    {:noreply, assign(socket, argdown_kind: kind)}
+  end
+
+  @impl true
+  def handle_event("argdown_create", %{"activity_id" => activity_id}, socket) do
+    %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} = socket.assigns.text_selection
+    kind = socket.assigns.argdown_kind
+
+    case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id) do
+      {:ok, {new_block, _block_kind}} ->
+        {:noreply,
+         socket
+         |> assign(
+           text_selection: nil,
+           argdown_kind: nil,
+           blocks: [new_block | socket.assigns.blocks]
+         )
+         |> put_flash(:info, "#{String.capitalize(kind)} added to Deliberation")}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(text_selection: nil, argdown_kind: nil)
+         |> put_flash(:error, "Failed to create block: #{inspect(reason)}")}
+    end
   end
 
   defp render_markdown(content) do

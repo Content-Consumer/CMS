@@ -134,7 +134,12 @@
             </div>
           </div>
         </div>
-        <div class="block-preview text-sm">
+        <div
+          id={"argdown-#{block.id}"}
+          phx-hook="ArgdownSelector"
+          data-block-id={block.id}
+          class="block-preview text-sm"
+        >
           {render_markdown(block.block_content.content)}
         </div>
       </div>
@@ -142,6 +147,59 @@
 
     <div :if={@blocks == []} class="text-center py-16 text-base-content/40">
       No blocks yet. Create one above.
+    </div>
+  </div>
+
+  <%!-- ArgDown selection popover — single instance outside the :for loop --%>
+  <div
+    :if={@text_selection != nil}
+    id="argdown-popover"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-4"
+  >
+    <div class="rounded-box border border-base-300 bg-base-100 shadow-lg p-4 text-sm">
+      <div :if={is_nil(@argdown_kind)}>
+        <p class="text-xs font-medium opacity-60 mb-3">
+          "<span class="italic">{@text_selection.text}</span>"
+        </p>
+        <div class="flex gap-2 flex-wrap">
+          <button
+            phx-click="argdown_select_kind"
+            phx-value-kind="argument"
+            class="btn btn-sm btn-outline"
+          >
+            ArgDown: Add argument
+          </button>
+          <button
+            phx-click="argdown_select_kind"
+            phx-value-kind="statement"
+            class="btn btn-sm btn-outline"
+          >
+            ArgDown: Add statement
+          </button>
+          <button phx-click="argdown_dismiss" class="btn btn-sm btn-ghost">Cancel</button>
+        </div>
+      </div>
+
+      <div :if={not is_nil(@argdown_kind)}>
+        <p class="text-xs font-medium opacity-60 mb-3">
+          Add as <strong>{@argdown_kind}</strong> to which activity?
+        </p>
+        <div :if={@argdown_activities == []} class="text-xs opacity-50 mb-2">
+          No argument activities yet.
+          <.link href="/ext/deliberation/activities/new" class="link">Create one</.link> first.
+        </div>
+        <div class="flex flex-col gap-1 mb-2">
+          <button
+            :for={activity <- @argdown_activities}
+            phx-click="argdown_create"
+            phx-value-activity_id={activity.id}
+            class="btn btn-sm btn-outline justify-start"
+          >
+            {activity.name}
+          </button>
+        </div>
+        <button phx-click="argdown_dismiss" class="btn btn-sm btn-ghost">Cancel</button>
+      </div>
     </div>
   </div>
 </div>

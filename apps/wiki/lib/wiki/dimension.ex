@@ -1,6 +1,13 @@
 defmodule Wiki.Dimension do
+  import Ecto.Query
   alias Wiki.Repo
   alias Wiki.Dimension.{Dimension, BlockDimension}
+
+  def get_dimension_by_title(title) do
+    Dimension
+    |> where([d], d.title == ^title)
+    |> Repo.one()
+  end
 
   def create_dimension(attrs) do
     %Dimension{}

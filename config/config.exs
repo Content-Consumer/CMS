@@ -32,7 +32,14 @@ config :wiki, :scopes,
 config :wiki,
   ecto_repos: [Wiki.Repo],
   generators: [timestamp_type: :utc_datetime],
-  extensions: [Deliberation]
+  extensions: [Deliberation],
+  extension_routes: [
+    {"/ext/deliberation", [
+      {"/activities", Deliberation.Web.ActivitiesLive, :index},
+      {"/activities/new", Deliberation.Web.ActivitiesLive, :new},
+      {"/activity/:activity_id", Deliberation.Web.ActivityLive, :show}
+    ]}
+  ]
 
 # Configure the endpoint
 config :wiki, WikiWeb.Endpoint,

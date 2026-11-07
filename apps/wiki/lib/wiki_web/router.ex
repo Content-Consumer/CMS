@@ -2,6 +2,7 @@ defmodule WikiWeb.Router do
   use WikiWeb, :router
 
   import WikiWeb.UserAuth
+  import Wiki.Extension.Web
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -23,6 +24,8 @@ defmodule WikiWeb.Router do
     get "/", PageController, :home
     live "/blocks", BlocksLive
   end
+
+  mount_extension_routes()
 
   # Other scopes may use custom stacks.
   # scope "/api", WikiWeb do

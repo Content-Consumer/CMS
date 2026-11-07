@@ -11,9 +11,26 @@ defmodule Wiki.Extensions do
   end
 
   def enable_all do
-    registered()
-    |> Enum.filter(&function_exported?(&1, :dimensions, 0))
-    |> Enum.each(&enable/1)
+    all = registered()
+    Logger.info("[Extensions] enable_all: registered=#{inspect(all)}")
+
+    filtered = Enum.filter(all, fn mod ->
+      Code.ensure_loaded?(mod) && function_exported?(mod, :dimensions, 0)
+    end)
+    Logger.info("[Extensions] enable_all: filtered=#{inspect(filtered)}")
+
+    filtered
+    |> Enum.each(fn mod ->
+      try do
+        case enable(mod) do
+          :ok -> Logger.info("Extension #{mod.name()} enabled successfully")
+          {:error, reason} ->
+            Logger.warning("Failed to enable extension #{mod.name()}: #{inspect(reason)}")
+        end
+      rescue
+        e -> Logger.warning("Failed to enable extension #{mod.name()} (exception): #{inspect(e)}")
+      end
+    end)
   end
 
   def enable(module) do
@@ -33,7 +50,7 @@ defmodule Wiki.Extensions do
     name = module.name()
     Logger.info("Enabling extension: #{name}")
 
-    Repo.transaction(fn ->
+    case Repo.transaction(fn ->
       dim_map =
         module.dimensions()
         |> Enum.reduce(%{}, fn attrs, acc ->
@@ -62,6 +79,9 @@ defmodule Wiki.Extensions do
         {:ok, _} -> :ok
         {:error, changeset} -> Repo.rollback(changeset)
       end
-    end)
+    end) do
+      {:ok, _} -> :ok
+      {:error, _} = error -> error
+    end
   end
 end

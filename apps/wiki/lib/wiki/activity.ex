@@ -5,6 +5,12 @@ defmodule Wiki.Activity do
 
   # --- DimensionActivityType ---
 
+  def get_activity_type_by(dimension_id, type) do
+    DimensionActivityType
+    |> where([t], t.dimension_id == ^dimension_id and t.type == ^type)
+    |> Repo.one()
+  end
+
   def create_activity_type(attrs) do
     %DimensionActivityType{}
     |> DimensionActivityType.changeset(attrs)
@@ -19,9 +25,16 @@ defmodule Wiki.Activity do
 
   # --- GroupActivity ---
 
-  def create_group_activity(dimension_id, activity_type_id) do
+  def get_group_activity(id) do
+    case Repo.get(GroupActivity, id) do
+      nil -> nil
+      activity -> Repo.preload(activity, [:activity_type, :dimension])
+    end
+  end
+
+  def create_group_activity(dimension_id, activity_type_id, name) do
     %GroupActivity{}
-    |> GroupActivity.changeset(%{dimension_id: dimension_id, activity_type_id: activity_type_id})
+    |> GroupActivity.changeset(%{dimension_id: dimension_id, activity_type_id: activity_type_id, name: name})
     |> Repo.insert()
   end
 

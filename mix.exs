@@ -7,6 +7,7 @@ defmodule Cms.MixProject do
       version: "0.1.0",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      aliases: aliases(),
       listeners: [Phoenix.CodeReloader]
     ]
   end
@@ -18,5 +19,15 @@ defmodule Cms.MixProject do
   # Run "mix help deps" for examples and options.
   defp deps do
     []
+  end
+
+  defp aliases do
+    [
+      "wiki.migrate": ["cmd --cd apps/wiki mix wiki.migrate"],
+      "ecto.setup": ["ecto.create --repo Wiki.Repo", "wiki.migrate"],
+      "ecto.reset": ["ecto.drop --repo Wiki.Repo", "ecto.setup"],
+      "assets.setup": ["cmd --cd apps/wiki mix assets.setup"],
+      "assets.build": ["cmd --cd apps/wiki mix assets.build"]
+    ]
   end
 end
