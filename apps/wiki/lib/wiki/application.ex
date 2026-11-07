@@ -23,6 +23,7 @@ defmodule Wiki.Application do
     opts = [strategy: :one_for_one, name: Wiki.Supervisor]
     {:ok, pid} = Supervisor.start_link(children, opts)
     Wiki.Metadata.install_defaults()
+    Wiki.BlockRelationship.install_defaults()
     Wiki.Extensions.enable_all()
     {:ok, pid}
   end

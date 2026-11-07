@@ -16,6 +16,14 @@ defmodule Wiki.Extension do
   @callback dimensions() :: [dimension_blueprint()]
   @callback activity_types() :: [activity_type_blueprint()]
 
-  @optional_callbacks [metadata_fields: 0]
+  @type relationship_type_blueprint :: %{
+          name: String.t(),
+          label: String.t(),
+          directional: boolean(),
+          dimension_title: String.t()
+        }
+
+  @optional_callbacks [metadata_fields: 0, relationship_types: 0]
   @callback metadata_fields() :: [metadata_field_blueprint()]
+  @callback relationship_types() :: [relationship_type_blueprint()]
 end

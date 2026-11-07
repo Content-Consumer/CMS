@@ -18,7 +18,12 @@ defmodule WikiWeb.BlocksLive do
        argdown_activities: [],
        breadcrumbs: [%{label: "Blocks", path: nil}],
        title_field: title_field,
-       editing_title_id: nil
+       editing_title_id: nil,
+       ref_type: nil,
+       editing_ref_id: nil,
+       ref_search_query: "",
+       ref_suggestions: [],
+       rel_map: %{}
      )
      |> put_blocks(blocks)}
   end
@@ -167,6 +172,59 @@ defmodule WikiWeb.BlocksLive do
     end
   end
 
+  @impl true
+  def handle_event("show_ref_editor", %{"id" => id}, socket) do
+    ref_type = Wiki.BlockRelationship.get_type_by_name("references")
+    {:noreply, assign(socket, editing_ref_id: id, ref_type: ref_type, ref_search_query: "", ref_suggestions: [])}
+  end
+
+  @impl true
+  def handle_event("hide_ref_editor", _, socket) do
+    {:noreply, assign(socket, editing_ref_id: nil, ref_type: nil, ref_search_query: "", ref_suggestions: [])}
+  end
+
+  @impl true
+  def handle_event("search_ref", %{"query" => query}, socket) do
+    suggestions =
+      query
+      |> String.trim()
+      |> Wiki.TextBlock.search_blocks()
+      |> Enum.reject(fn b -> b.id == socket.assigns.editing_ref_id end)
+    {:noreply, assign(socket, ref_search_query: query, ref_suggestions: suggestions)}
+  end
+
+  @impl true
+  def handle_event("create_reference", %{"target_id" => target_id}, socket) do
+    source_id = socket.assigns.editing_ref_id
+    ref_type = socket.assigns.ref_type
+
+    case Wiki.BlockRelationship.create_relation(source_id, target_id, ref_type.id) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_blocks(socket.assigns.blocks)
+         |> assign(editing_ref_id: nil, ref_type: nil, ref_search_query: "", ref_suggestions: [])
+         |> put_flash(:info, "Reference added")}
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to add reference")}
+    end
+  end
+
+  @impl true
+  def handle_event("delete_relation", %{"id" => id}, socket) do
+    case Wiki.BlockRelationship.delete_relation(id) do
+      {:ok, _} ->
+        {:noreply, socket |> put_blocks(socket.assigns.blocks) |> put_flash(:info, "Relation removed")}
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to remove relation")}
+    end
+  end
+
+  defp other_block_content(rel, block_id) do
+    other = if rel.source_block_id == block_id, do: rel.target_block, else: rel.source_block
+    String.slice(other.block_content.content, 0, 60)
+  end
+
   defp put_blocks(socket, blocks) do
     title_field = socket.assigns[:title_field]
     title_map =
@@ -181,7 +239,15 @@ defmodule WikiWeb.BlocksLive do
         %{}
       end
 
-    assign(socket, blocks: blocks, title_map: title_map)
+    rel_map =
+      if blocks != [] do
+        block_ids = Enum.map(blocks, & &1.id)
+        Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
+      else
+        %{}
+      end
+
+    assign(socket, blocks: blocks, title_map: title_map, rel_map: rel_map)
   end
 
   defp render_markdown(content) do

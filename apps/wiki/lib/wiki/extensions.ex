@@ -38,26 +38,30 @@ defmodule Wiki.Extensions do
 
     case Repo.get_by(EnabledExtension, name: name) do
       %EnabledExtension{} ->
-        Logger.info("Extension #{name} already enabled, syncing fields")
-        sync_fields(module)
+        Logger.info("Extension #{name} already enabled, syncing")
+        sync_extension(module)
 
       nil ->
         install(module)
     end
   end
 
-  defp sync_fields(module) do
-    if function_exported?(module, :metadata_fields, 0) do
-      dim_map =
-        module.dimensions()
-        |> Enum.reduce(%{}, fn %{title: title}, acc ->
-          case Wiki.Dimension.get_dimension_by_title(title) do
-            nil -> acc
-            dim -> Map.put(acc, title, dim)
-          end
-        end)
+  defp sync_extension(module) do
+    dim_map =
+      module.dimensions()
+      |> Enum.reduce(%{}, fn %{title: title}, acc ->
+        case Wiki.Dimension.get_dimension_by_title(title) do
+          nil -> acc
+          dim -> Map.put(acc, title, dim)
+        end
+      end)
 
+    if function_exported?(module, :metadata_fields, 0) do
       Wiki.Metadata.install_fields(module.metadata_fields(), dim_map)
+    end
+
+    if function_exported?(module, :relationship_types, 0) do
+      Wiki.BlockRelationship.install_types(module.relationship_types(), dim_map)
     end
 
     :ok
@@ -94,6 +98,13 @@ defmodule Wiki.Extensions do
 
       if function_exported?(module, :metadata_fields, 0) do
         case Wiki.Metadata.install_fields(module.metadata_fields(), dim_map) do
+          :ok -> :ok
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
+      end
+
+      if function_exported?(module, :relationship_types, 0) do
+        case Wiki.BlockRelationship.install_types(module.relationship_types(), dim_map) do
           :ok -> :ok
           {:error, changeset} -> Repo.rollback(changeset)
         end

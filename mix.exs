@@ -23,7 +23,6 @@ defmodule Cms.MixProject do
 
   defp aliases do
     [
-      "wiki.migrate": ["cmd --cd apps/wiki mix wiki.migrate"],
       "ecto.setup": ["ecto.create --repo Wiki.Repo", "wiki.migrate"],
       "ecto.reset": ["ecto.drop --repo Wiki.Repo", "ecto.setup"],
       "assets.setup": ["cmd --cd apps/wiki mix assets.setup"],

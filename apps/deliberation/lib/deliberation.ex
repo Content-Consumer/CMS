@@ -33,6 +33,14 @@ defmodule Deliberation do
     ]
   end
 
+  @impl Wiki.Extension
+  def relationship_types do
+    [
+      %{name: "supports", label: "Supports", directional: true,  dimension_title: @dimension_title},
+      %{name: "attacks",  label: "Attacks",  directional: true,  dimension_title: @dimension_title}
+    ]
+  end
+
   def create_argdown_block(original_block_id, selected_text, from_ix, to_ix, kind, group_activity_id) do
     Repo.transaction(fn ->
       with {:ok, _sub_block} <- SubBlock.create_subblock(original_block_id, from_ix, to_ix),
