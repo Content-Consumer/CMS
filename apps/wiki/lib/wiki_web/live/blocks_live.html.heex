@@ -79,7 +79,7 @@
       </div>
       <%!-- Preview mode --%>
       <div :if={@editing_block_id != block.id} class="card-body py-4 px-5">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-2">
           <code class="text-xs opacity-40">{block.id}</code>
           <div class="flex items-center gap-1">
             <button
@@ -106,6 +106,16 @@
                 tabindex="0"
                 class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-1 shadow-md border border-base-300 text-sm"
               >
+                <li>
+                  <button
+                    phx-click="edit_block_title"
+                    phx-value-block_id={block.id}
+                    class="flex items-center gap-2 w-full"
+                  >
+                    <.icon name="hero-tag" class="h-4 w-4 shrink-0" />
+                    {if @title_map[block.id], do: "Edit title", else: "Set title"}
+                  </button>
+                </li>
                 <li
                   :for={{ext_name, options} <- Wiki.Block.Extensions.options_for(block)}
                 >
@@ -126,13 +136,37 @@
                     </ul>
                   </details>
                 </li>
-                <li :if={Wiki.Block.Extensions.registered() == []}>
-                  <span class="opacity-40 text-xs">No extensions active</span>
-                </li>
               </ul>
             </div>
           </div>
         </div>
+        <%!-- Inline title editor --%>
+        <form
+          :if={@editing_title_id == block.id}
+          phx-submit="save_block_title"
+          class="flex gap-2 mb-3"
+        >
+          <input type="hidden" name="block_id" value={block.id} />
+          <input
+            type="text"
+            name="title"
+            value={@title_map[block.id] || ""}
+            placeholder="Enter a title…"
+            class="input input-sm input-bordered flex-1"
+            autofocus
+          />
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          <button type="button" phx-click="cancel_block_title" class="btn btn-ghost btn-sm">
+            Cancel
+          </button>
+        </form>
+        <%!-- Title display --%>
+        <p
+          :if={@title_map[block.id] && @editing_title_id != block.id}
+          class="font-semibold text-base mb-1"
+        >
+          {@title_map[block.id]}
+        </p>
         <div
           id={"argdown-#{block.id}"}
           phx-hook="ArgdownSelector"

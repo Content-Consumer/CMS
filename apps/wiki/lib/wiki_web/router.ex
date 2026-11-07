@@ -20,12 +20,17 @@ defmodule WikiWeb.Router do
 
   scope "/", WikiWeb do
     pipe_through :browser
-
     get "/", PageController, :home
-    live "/blocks", BlocksLive
   end
 
-  mount_extension_routes()
+  live_session :app, on_mount: [{WikiWeb.UserAuth, :mount_current_scope}] do
+    scope "/", WikiWeb do
+      pipe_through :browser
+      live "/blocks", BlocksLive
+    end
+
+    mount_extension_routes()
+  end
 
   # Other scopes may use custom stacks.
   # scope "/api", WikiWeb do

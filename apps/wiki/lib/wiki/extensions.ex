@@ -38,12 +38,29 @@ defmodule Wiki.Extensions do
 
     case Repo.get_by(EnabledExtension, name: name) do
       %EnabledExtension{} ->
-        Logger.info("Extension #{name} already enabled, skipping")
-        :ok
+        Logger.info("Extension #{name} already enabled, syncing fields")
+        sync_fields(module)
 
       nil ->
         install(module)
     end
+  end
+
+  defp sync_fields(module) do
+    if function_exported?(module, :metadata_fields, 0) do
+      dim_map =
+        module.dimensions()
+        |> Enum.reduce(%{}, fn %{title: title}, acc ->
+          case Wiki.Dimension.get_dimension_by_title(title) do
+            nil -> acc
+            dim -> Map.put(acc, title, dim)
+          end
+        end)
+
+      Wiki.Metadata.install_fields(module.metadata_fields(), dim_map)
+    end
+
+    :ok
   end
 
   defp install(module) do
@@ -74,6 +91,13 @@ defmodule Wiki.Extensions do
           end
         end)
       end)
+
+      if function_exported?(module, :metadata_fields, 0) do
+        case Wiki.Metadata.install_fields(module.metadata_fields(), dim_map) do
+          :ok -> :ok
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
+      end
 
       case Repo.insert(EnabledExtension.changeset(%EnabledExtension{}, %{name: name})) do
         {:ok, _} -> :ok

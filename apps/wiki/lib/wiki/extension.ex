@@ -5,8 +5,17 @@ defmodule Wiki.Extension do
           name: String.t(),
           type: String.t()
         }
+  @type metadata_field_blueprint :: %{
+          name: String.t(),
+          label: String.t(),
+          type: String.t(),
+          dimension_title: String.t()
+        }
 
   @callback name() :: String.t()
   @callback dimensions() :: [dimension_blueprint()]
   @callback activity_types() :: [activity_type_blueprint()]
+
+  @optional_callbacks [metadata_fields: 0]
+  @callback metadata_fields() :: [metadata_field_blueprint()]
 end

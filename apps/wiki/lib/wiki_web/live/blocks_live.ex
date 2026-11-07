@@ -4,27 +4,29 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    title_field = Wiki.Metadata.get_field_by_name("title")
+    blocks = TextBlock.get_all_blocks()
+
     {:ok,
-     assign(socket,
-       blocks: TextBlock.get_all_blocks(),
+     socket
+     |> assign(
        show_editor: false,
        editing_block_id: nil,
        search_query: "",
        text_selection: nil,
        argdown_kind: nil,
        argdown_activities: [],
-       breadcrumbs: [%{label: "Blocks", path: nil}]
-     )}
+       breadcrumbs: [%{label: "Blocks", path: nil}],
+       title_field: title_field,
+       editing_title_id: nil
+     )
+     |> put_blocks(blocks)}
   end
 
   @impl true
   def handle_event("search", %{"query" => query}, socket) do
-    blocks =
-      query
-      |> String.trim()
-      |> TextBlock.search_blocks()
-
-    {:noreply, assign(socket, blocks: blocks, search_query: query)}
+    blocks = query |> String.trim() |> TextBlock.search_blocks()
+    {:noreply, socket |> assign(search_query: query) |> put_blocks(blocks)}
   end
 
   @impl true
@@ -41,14 +43,39 @@ defmodule WikiWeb.BlocksLive do
   def handle_event("save_block", %{"content" => content}, socket) do
     case TextBlock.create_block(content) do
       {:ok, block} ->
+        new_blocks = [block | socket.assigns.blocks]
         {:noreply,
          socket
-         |> assign(blocks: [block | socket.assigns.blocks], show_editor: false)
+         |> put_blocks(new_blocks)
+         |> assign(show_editor: false)
          |> put_flash(:info, "Block saved")}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Failed to save block")}
     end
+  end
+
+  @impl true
+  def handle_event("edit_block_title", %{"block_id" => block_id}, socket) do
+    {:noreply, assign(socket, editing_title_id: block_id)}
+  end
+
+  @impl true
+  def handle_event("cancel_block_title", _, socket) do
+    {:noreply, assign(socket, editing_title_id: nil)}
+  end
+
+  @impl true
+  def handle_event("save_block_title", %{"block_id" => block_id, "title" => title}, socket) do
+    field = socket.assigns.title_field
+    title = String.trim(title)
+
+    if field do
+      Wiki.Metadata.set_value(block_id, field.id, %{"value" => title})
+    end
+
+    title_map = Map.put(socket.assigns.title_map, block_id, if(title == "", do: nil, else: title))
+    {:noreply, assign(socket, editing_title_id: nil, title_map: title_map)}
   end
 
   @impl true
@@ -82,7 +109,8 @@ defmodule WikiWeb.BlocksLive do
   def handle_event("delete_block", %{"id" => id}, socket) do
     case TextBlock.delete_block(id) do
       {:ok, _} ->
-        {:noreply, assign(socket, blocks: Enum.reject(socket.assigns.blocks, &(&1.id == id)))}
+        new_blocks = Enum.reject(socket.assigns.blocks, &(&1.id == id))
+        {:noreply, socket |> put_blocks(new_blocks) |> assign(title_map: Map.delete(socket.assigns.title_map, id))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Failed to delete block")}
@@ -124,13 +152,11 @@ defmodule WikiWeb.BlocksLive do
 
     case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id) do
       {:ok, {new_block, _block_kind}} ->
+        new_blocks = [new_block | socket.assigns.blocks]
         {:noreply,
          socket
-         |> assign(
-           text_selection: nil,
-           argdown_kind: nil,
-           blocks: [new_block | socket.assigns.blocks]
-         )
+         |> put_blocks(new_blocks)
+         |> assign(text_selection: nil, argdown_kind: nil)
          |> put_flash(:info, "#{String.capitalize(kind)} added to Deliberation")}
 
       {:error, reason} ->
@@ -139,6 +165,23 @@ defmodule WikiWeb.BlocksLive do
          |> assign(text_selection: nil, argdown_kind: nil)
          |> put_flash(:error, "Failed to create block: #{inspect(reason)}")}
     end
+  end
+
+  defp put_blocks(socket, blocks) do
+    title_field = socket.assigns[:title_field]
+    title_map =
+      if title_field && blocks != [] do
+        block_ids = Enum.map(blocks, & &1.id)
+        raw = Wiki.Metadata.get_values_for_blocks(block_ids, [title_field.id])
+        Map.new(block_ids, fn id ->
+          title = get_in(raw, [id, title_field.id, "value"])
+          {id, if(title == "" or is_nil(title), do: nil, else: title)}
+        end)
+      else
+        %{}
+      end
+
+    assign(socket, blocks: blocks, title_map: title_map)
   end
 
   defp render_markdown(content) do
