@@ -208,6 +208,69 @@ defmodule Deliberation do
     |> Repo.all()
   end
 
+  # --- Sources ---
+
+  def list_sources_for_activity(activity_id) do
+    BlockKind
+    |> where([bk], bk.group_activity_id == ^activity_id and bk.kind == "source")
+    |> preload([bk], [:created_by, block: :block_content])
+    |> Repo.all()
+  end
+
+  def add_source_block(block_id, group_activity_id, user_id \\ nil) do
+    %BlockKind{}
+    |> BlockKind.changeset(%{
+      block_id: block_id,
+      group_activity_id: group_activity_id,
+      kind: "source",
+      created_by_id: user_id
+    })
+    |> Repo.insert()
+  end
+
+  def create_source_text_block(content, group_activity_id, user_id \\ nil) do
+    Repo.transaction(fn ->
+      with {:ok, block} <- Wiki.TextBlock.create_block(content, user_id),
+           dim when not is_nil(dim) <- Dimension.get_dimension_by_title(@dimension_title),
+           {:ok, _} <- Dimension.add_block_to_dimension(block.id, dim.id),
+           {:ok, block_kind} <-
+             Repo.insert(BlockKind.changeset(%BlockKind{}, %{
+               block_id: block.id,
+               group_activity_id: group_activity_id,
+               kind: "source",
+               created_by_id: user_id
+             })) do
+        {block, block_kind}
+      else
+        nil -> Repo.rollback(:dimension_not_found)
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  def remove_source_block(block_id, group_activity_id) do
+    in_use =
+      BlockKind
+      |> where([bk], bk.block_id == ^block_id and bk.group_activity_id == ^group_activity_id and bk.kind in ["argument", "statement"])
+      |> Repo.exists?()
+
+    if in_use do
+      {:error, :in_use}
+    else
+      case Repo.get_by(BlockKind, block_id: block_id, group_activity_id: group_activity_id, kind: "source") do
+        nil -> {:error, :not_found}
+        bk -> Repo.delete(bk)
+      end
+    end
+  end
+
+  def source_block_ids_for_activity(activity_id) do
+    BlockKind
+    |> where([bk], bk.group_activity_id == ^activity_id and bk.kind == "source")
+    |> select([bk], bk.block_id)
+    |> Repo.all()
+  end
+
   def list_argument_activities do
     case Dimension.get_dimension_by_title(@dimension_title) do
       nil -> []

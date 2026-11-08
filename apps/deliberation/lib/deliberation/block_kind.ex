@@ -19,8 +19,10 @@ defmodule Deliberation.BlockKind do
     block_kind
     |> cast(attrs, [:block_id, :group_activity_id, :kind, :created_by_id])
     |> validate_required([:block_id, :group_activity_id, :kind])
-    |> validate_inclusion(:kind, ["argument", "statement", "poll_item"])
-    |> unique_constraint(:block_id)
+    |> validate_inclusion(:kind, ["argument", "statement", "poll_item", "source"])
+    |> unique_constraint([:block_id, :group_activity_id, :kind],
+      name: :deliberation_block_kinds_block_id_group_activity_id_kind_index
+    )
     |> foreign_key_constraint(:block_id)
     |> foreign_key_constraint(:group_activity_id)
   end
