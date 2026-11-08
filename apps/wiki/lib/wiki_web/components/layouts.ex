@@ -38,17 +38,30 @@ defmodule WikiWeb.Layouts do
       end)
       |> Enum.map(fn mod -> %{name: mod.name(), path: mod.home_path()} end)
 
-    assigns = assign(assigns, :extensions, extensions)
+    active_ext =
+      case assigns.breadcrumbs do
+        [%{label: label} | _] -> Enum.find(extensions, fn ext -> ext.name == label end)
+        _ -> nil
+      end
+
+    breadcrumb_trail =
+      if active_ext, do: tl(assigns.breadcrumbs), else: assigns.breadcrumbs
+
+    assigns =
+      assigns
+      |> assign(:extensions, extensions)
+      |> assign(:active_ext, active_ext)
+      |> assign(:breadcrumb_trail, breadcrumb_trail)
 
     ~H"""
     <nav class="navbar bg-base-100 border-b border-base-300 px-4 min-h-12">
-      <div class="flex-1 flex items-center gap-1">
-        <.link navigate="/blocks" class="btn btn-ghost btn-sm btn-square" title="Blocks">
+      <div class="flex-1 flex items-center gap-1 min-w-0">
+        <.link navigate="/blocks" class="btn btn-ghost btn-sm btn-square shrink-0" title="Blocks">
           <.icon name="hero-document-text" class="h-5 w-5" />
         </.link>
-        <div :if={@extensions != []} class="dropdown">
+        <div :if={@extensions != []} class="dropdown shrink-0">
           <button tabindex="0" class="btn btn-ghost btn-sm gap-1">
-            Extensions
+            {if @active_ext, do: @active_ext.name, else: "Extensions"}
             <.icon name="hero-chevron-down-micro" class="h-3 w-3" />
           </button>
           <ul
@@ -60,8 +73,22 @@ defmodule WikiWeb.Layouts do
             </li>
           </ul>
         </div>
+        <div :if={@breadcrumb_trail != []} class="flex items-center gap-1 min-w-0 overflow-hidden">
+          <span :for={crumb <- @breadcrumb_trail} class="flex items-center gap-1 min-w-0">
+            <span class="text-base-content/30 text-sm shrink-0">›</span>
+            <.link
+              :if={crumb.path}
+              navigate={crumb.path}
+              class="text-sm text-base-content/60 hover:text-base-content truncate"
+            >{crumb.label}</.link>
+            <span
+              :if={is_nil(crumb.path)}
+              class="text-sm font-medium truncate"
+            >{crumb.label}</span>
+          </span>
+        </div>
       </div>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1 shrink-0">
         <%= if @current_scope && @current_scope.user do %>
           <div class="tooltip tooltip-bottom" data-tip={@current_scope.user.email}>
             <div class="avatar avatar-placeholder">
@@ -82,15 +109,6 @@ defmodule WikiWeb.Layouts do
         <% end %>
       </div>
     </nav>
-
-    <div :if={@breadcrumbs != []} class="text-sm breadcrumbs px-5 py-2 border-b border-base-200 bg-base-50">
-      <ul>
-        <li :for={crumb <- @breadcrumbs}>
-          <.link :if={crumb.path} navigate={crumb.path}>{crumb.label}</.link>
-          <span :if={is_nil(crumb.path)} class="opacity-60">{crumb.label}</span>
-        </li>
-      </ul>
-    </div>
 
     <.flash_group flash={@flash} />
 
