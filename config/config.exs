@@ -39,6 +39,8 @@ config :wiki,
       {"/activities", Deliberation.Web.ActivitiesLive, :index},
       {"/activities/new", Deliberation.Web.ActivitiesLive, :new},
       {"/activity/:activity_id", Deliberation.Web.ActivityLive, :show},
+      {"/activity/:activity_id/graph", Deliberation.Web.ActivityLive, :graph},
+      {"/activity/:activity_id/node/:block_id", Deliberation.Web.ActivityLive, :node},
       {"/voting-activities", Deliberation.Web.VotingActivitiesLive, :index},
       {"/voting-activities/new", Deliberation.Web.VotingActivitiesLive, :new},
       {"/voting-activity/:activity_id", Deliberation.Web.VotingActivityLive, :show}
