@@ -1,14 +1,20 @@
 defmodule Wiki.TextBlock do
   import Ecto.Query
   alias Wiki.Repo
-  alias Wiki.TextBlock.{Block, BlockContent}
+  alias Wiki.TextBlock.{Block, BlockContent, BlockContentVersion}
 
   def create_block(markdown) do
     Repo.transaction(fn ->
       with {:ok, content} <-
              Repo.insert(BlockContent.changeset(%BlockContent{}, %{content: markdown})),
            {:ok, block} <-
-             Repo.insert(Block.changeset(%Block{}, %{content_id: content.id})) do
+             Repo.insert(Block.changeset(%Block{}, %{content_id: content.id})),
+           {:ok, _version} <-
+             Repo.insert(BlockContentVersion.changeset(%BlockContentVersion{}, %{
+               block_id: block.id,
+               content: markdown,
+               version_num: 1
+             })) do
         %{block | block_content: content}
       else
         {:error, changeset} -> Repo.rollback(changeset)
@@ -34,11 +40,45 @@ defmodule Wiki.TextBlock do
         {:error, :not_found}
 
       block ->
-        with {:ok, updated_content} <-
-               Repo.update(BlockContent.changeset(block.block_content, %{content: markdown})) do
-          {:ok, %{block | block_content: updated_content}}
+        Repo.transaction(fn ->
+          with {:ok, updated_content} <-
+                 Repo.update(BlockContent.changeset(block.block_content, %{content: markdown})),
+               next_num <- next_version_num(id),
+               {:ok, _version} <-
+                 Repo.insert(BlockContentVersion.changeset(%BlockContentVersion{}, %{
+                   block_id: id,
+                   content: markdown,
+                   version_num: next_num
+                 })) do
+            {:ok, %{block | block_content: updated_content}}
+          else
+            {:error, changeset} -> Repo.rollback(changeset)
+          end
+        end)
+        |> case do
+          {:ok, {:ok, block}} -> {:ok, block}
+          {:error, _} = err -> err
         end
     end
+  end
+
+  defp next_version_num(block_id) do
+    max_num =
+      Repo.one(
+        from v in BlockContentVersion,
+          where: v.block_id == ^block_id,
+          select: max(v.version_num)
+      ) || 0
+
+    max_num + 1
+  end
+
+  def get_current_version(block_id) do
+    BlockContentVersion
+    |> where([v], v.block_id == ^block_id)
+    |> order_by([v], desc: v.version_num)
+    |> limit(1)
+    |> Repo.one()
   end
 
   def search_blocks(query) when is_binary(query) and query != "" do

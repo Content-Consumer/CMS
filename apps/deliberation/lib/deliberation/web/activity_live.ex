@@ -321,8 +321,16 @@ defmodule Deliberation.Web.ActivityLive do
 
   defp render_markdown(content) do
     case Earmark.as_html(content) do
-      {:ok, html, _} -> {:safe, html}
-      {:error, html, _} -> {:safe, html}
+      {:ok, html, _} -> {:safe, process_subblock_refs(html)}
+      {:error, html, _} -> {:safe, process_subblock_refs(html)}
     end
+  end
+
+  defp process_subblock_refs(html) do
+    Regex.replace(
+      ~r/<a href="sblk:\/\/(sblk_[^"]+)"[^>]*>(.*?)<\/a>/s,
+      html,
+      ~s(<span class="subblock-ref" data-subblock-id="\\1" title="Pasted highlight reference">\\2<span class="subblock-ref-icon"> ↗</span></span>)
+    )
   end
 end

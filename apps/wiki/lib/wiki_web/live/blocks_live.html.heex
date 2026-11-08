@@ -181,6 +181,7 @@
           id={"argdown-#{block.id}"}
           phx-hook="ArgdownSelector"
           data-block-id={block.id}
+          data-subblocks={Jason.encode!(@subblock_map[block.id] || [])}
           class="block-preview text-sm"
         >
           {render_markdown(block.block_content.content)}
@@ -255,22 +256,34 @@
         <p class="text-xs font-medium opacity-60 mb-3">
           "<span class="italic">{@text_selection.text}</span>"
         </p>
-        <div class="flex gap-2 flex-wrap">
-          <button
-            phx-click="argdown_select_kind"
-            phx-value-kind="argument"
-            class="btn btn-sm btn-outline"
-          >
-            ArgDown: Add argument
-          </button>
-          <button
-            phx-click="argdown_select_kind"
-            phx-value-kind="statement"
-            class="btn btn-sm btn-outline"
-          >
-            ArgDown: Add statement
-          </button>
-          <button phx-click="argdown_dismiss" class="btn btn-sm btn-ghost">Cancel</button>
+        <div class="flex flex-col gap-3">
+          <div>
+            <button phx-click="create_highlight" class="btn btn-sm btn-outline">
+              Highlight
+            </button>
+          </div>
+          <div class="border-t border-base-200 pt-3">
+            <p class="text-xs opacity-40 mb-2">ArgDown</p>
+            <div class="flex gap-2">
+              <button
+                phx-click="argdown_select_kind"
+                phx-value-kind="argument"
+                class="btn btn-sm btn-outline"
+              >
+                Add argument
+              </button>
+              <button
+                phx-click="argdown_select_kind"
+                phx-value-kind="statement"
+                class="btn btn-sm btn-outline"
+              >
+                Add statement
+              </button>
+            </div>
+          </div>
+          <div class="border-t border-base-200 pt-3">
+            <button phx-click="argdown_dismiss" class="btn btn-sm btn-ghost">Cancel</button>
+          </div>
         </div>
       </div>
 

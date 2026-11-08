@@ -23,7 +23,8 @@ defmodule WikiWeb.BlocksLive do
        editing_ref_id: nil,
        ref_search_query: "",
        ref_suggestions: [],
-       rel_map: %{}
+       rel_map: %{},
+       subblock_map: %{}
      )
      |> put_blocks(blocks)}
   end
@@ -173,6 +174,38 @@ defmodule WikiWeb.BlocksLive do
   end
 
   @impl true
+  def handle_event("create_highlight", _, socket) do
+    case socket.assigns.text_selection do
+      nil ->
+        {:noreply, socket}
+
+      %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} ->
+        case Wiki.SubBlock.create_subblock(block_id, from_ix, to_ix, text) do
+          {:ok, _subblock} ->
+            {:noreply,
+             socket
+             |> put_blocks(socket.assigns.blocks)
+             |> assign(text_selection: nil)
+             |> put_flash(:info, "Highlight created")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to create highlight")}
+        end
+    end
+  end
+
+  @impl true
+  def handle_event("get_subblock_text", %{"id" => id}, socket) do
+    text =
+      case Wiki.SubBlock.get_subblock(id) do
+        nil -> nil
+        sub -> sub.text
+      end
+
+    {:reply, %{text: text, id: id}, socket}
+  end
+
+  @impl true
   def handle_event("show_ref_editor", %{"id" => id}, socket) do
     ref_type = Wiki.BlockRelationship.get_type_by_name("references")
     {:noreply, assign(socket, editing_ref_id: id, ref_type: ref_type, ref_search_query: "", ref_suggestions: [])}
@@ -247,13 +280,46 @@ defmodule WikiWeb.BlocksLive do
         %{}
       end
 
-    assign(socket, blocks: blocks, title_map: title_map, rel_map: rel_map)
+    subblock_map =
+      if blocks != [] do
+        block_ids = Enum.map(blocks, & &1.id)
+        raw = Wiki.SubBlock.list_subblocks_for_blocks(block_ids)
+
+        Map.new(block_ids, fn id ->
+          block = Enum.find(blocks, &(&1.id == id))
+          current_content = block.block_content.content
+          subs = Map.get(raw, id, [])
+
+          sub_data =
+            Enum.map(subs, fn s ->
+              is_stale =
+                is_nil(s.block_content_version) or
+                  s.block_content_version.content != current_content
+
+              %{id: s.id, from_ix: s.from_ix, to_ix: s.to_ix, text: s.text || "", is_stale: is_stale}
+            end)
+
+          {id, sub_data}
+        end)
+      else
+        %{}
+      end
+
+    assign(socket, blocks: blocks, title_map: title_map, rel_map: rel_map, subblock_map: subblock_map)
   end
 
   defp render_markdown(content) do
     case Earmark.as_html(content) do
-      {:ok, html, _} -> {:safe, html}
-      {:error, html, _} -> {:safe, html}
+      {:ok, html, _} -> {:safe, process_subblock_refs(html)}
+      {:error, html, _} -> {:safe, process_subblock_refs(html)}
     end
+  end
+
+  defp process_subblock_refs(html) do
+    Regex.replace(
+      ~r/<a href="sblk:\/\/(sblk_[^"]+)"[^>]*>(.*?)<\/a>/s,
+      html,
+      ~s(<span class="subblock-ref" data-subblock-id="\\1" title="Pasted highlight reference">\\2<span class="subblock-ref-icon"> ↗</span></span>)
+    )
   end
 end
