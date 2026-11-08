@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+exec "${0%/*}/cms" eval "Wiki.Release.migrate()"

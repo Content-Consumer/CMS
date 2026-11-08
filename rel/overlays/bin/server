@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+echo "==> Running database migrations..."
+"${0%/*}/cms" eval "Wiki.Release.migrate()"
+echo "==> Starting server..."
+
+export PHX_SERVER=true
+exec "${0%/*}/cms" start

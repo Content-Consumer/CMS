@@ -1,0 +1,29 @@
+# Build artifacts
+_build/
+deps/
+
+# Node modules (reinstalled in Docker)
+apps/wiki/assets/node_modules/
+
+# Compiled static assets (rebuilt in Docker)
+apps/wiki/priv/static/assets/
+apps/wiki/priv/static/cache_manifest.json
+
+# Git
+.git/
+.gitignore
+
+# Sensitive / local config
+.env
+.env.*
+
+# Logs
+*.log
+
+# Test artifacts
+apps/*/test/
+
+# Editor / OS
+.DS_Store
+.elixir_ls/
+.vscode/

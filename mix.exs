@@ -8,7 +8,16 @@ defmodule Cms.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      releases: [
+        cms: [
+          include_executables_for: [:unix],
+          applications: [
+            wiki: :permanent,
+            deliberation: :permanent
+          ]
+        ]
+      ]
     ]
   end
 
