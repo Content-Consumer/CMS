@@ -68,14 +68,14 @@ defmodule Deliberation.Web.VotingActivityLive do
           page_title: activity.name,
           breadcrumbs: [
             %{label: "Deliberation", path: "/ext/deliberation"},
-            %{label: "Voting Activities", path: "/ext/deliberation/voting-activities"},
+            %{label: "Poll", path: "/ext/deliberation/poll"},
             %{label: activity.name, path: nil}
           ]
         )
       else
         socket
         |> put_flash(:error, "Activity not found")
-        |> push_navigate(to: "/ext/deliberation/voting-activities")
+        |> push_navigate(to: "/ext/deliberation/poll")
       end
 
     {:noreply, socket}

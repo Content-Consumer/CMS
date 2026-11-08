@@ -82,8 +82,8 @@ defmodule Deliberation.Web.ActivityLive do
           focused_rels: focused_rels,
           breadcrumbs: [
             %{label: "Deliberation", path: "/ext/deliberation"},
-            %{label: "Activities", path: "/ext/deliberation/activities"},
-            %{label: activity.name, path: "/ext/deliberation/activity/#{activity.id}/graph"},
+            %{label: "Argument", path: "/ext/deliberation/argument"},
+            %{label: activity.name, path: "/ext/deliberation/argument/#{activity.id}/graph"},
             %{label: node_label, path: nil}
           ]
         )
@@ -109,7 +109,7 @@ defmodule Deliberation.Web.ActivityLive do
           focused_node: nil,
           breadcrumbs: [
             %{label: "Deliberation", path: "/ext/deliberation"},
-            %{label: "Activities", path: "/ext/deliberation/activities"},
+            %{label: "Argument", path: "/ext/deliberation/argument"},
             %{label: activity.name, path: nil}
           ],
           page_title:
@@ -268,14 +268,14 @@ defmodule Deliberation.Web.ActivityLive do
           <div role="tablist" class="tabs tabs-bordered shrink-0">
             <.link
               role="tab"
-              navigate={"/ext/deliberation/activity/#{@activity.id}"}
+              navigate={"/ext/deliberation/argument/#{@activity.id}"}
               class={"tab #{if @live_action == :show, do: "tab-active"}"}
             >
               List
             </.link>
             <.link
               role="tab"
-              navigate={"/ext/deliberation/activity/#{@activity.id}/graph"}
+              navigate={"/ext/deliberation/argument/#{@activity.id}/graph"}
               class={"tab #{if @live_action == :graph, do: "tab-active"}"}
             >
               Graph
@@ -303,7 +303,7 @@ defmodule Deliberation.Web.ActivityLive do
       <%!-- Node detail (:node) --%>
       <div :if={@live_action == :node}>
         <.link
-          navigate={"/ext/deliberation/activity/#{@activity.id}/graph"}
+          navigate={"/ext/deliberation/argument/#{@activity.id}/graph"}
           class="btn btn-ghost btn-sm gap-1 mb-4 -ml-1"
         >
           <.icon name="hero-arrow-left" class="h-4 w-4" /> Back to graph
@@ -367,7 +367,7 @@ defmodule Deliberation.Web.ActivityLive do
                 <div class="space-y-2">
                   <.link
                     :for={rel <- @focused_rels.supporting}
-                    navigate={"/ext/deliberation/activity/#{@activity.id}/node/#{rel.source_block_id}"}
+                    navigate={"/ext/deliberation/argument/#{@activity.id}/node/#{rel.source_block_id}"}
                     class="card bg-base-100 border border-brand-200 hover:border-brand-400 transition-colors cursor-pointer block"
                   >
                     <div class="card-body py-3 px-4 text-sm">
@@ -383,7 +383,7 @@ defmodule Deliberation.Web.ActivityLive do
                 <div class="space-y-2">
                   <.link
                     :for={rel <- @focused_rels.attacking}
-                    navigate={"/ext/deliberation/activity/#{@activity.id}/node/#{rel.source_block_id}"}
+                    navigate={"/ext/deliberation/argument/#{@activity.id}/node/#{rel.source_block_id}"}
                     class="card bg-base-100 border border-ink-200 hover:border-ink-400 transition-colors cursor-pointer block"
                   >
                     <div class="card-body py-3 px-4 text-sm">
@@ -444,7 +444,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="space-y-2">
               <.link
                 :for={rel <- @focused_rels.as_source}
-                navigate={"/ext/deliberation/activity/#{@activity.id}/node/#{rel.target_block_id}"}
+                navigate={"/ext/deliberation/argument/#{@activity.id}/node/#{rel.target_block_id}"}
                 class="card bg-base-100 border border-base-300 hover:border-base-content/20 transition-colors cursor-pointer block"
               >
                 <div class="card-body py-3 px-4">
@@ -570,7 +570,7 @@ defmodule Deliberation.Web.ActivityLive do
           <%!-- Statements with their arguments --%>
           <div :for={stmt_data <- @graph_data.statements} class="relative">
             <.link
-              navigate={"/ext/deliberation/activity/#{@activity.id}/node/#{stmt_data.bk.block.id}"}
+              navigate={"/ext/deliberation/argument/#{@activity.id}/node/#{stmt_data.bk.block.id}"}
               class="card bg-base-100 border-2 border-accent-200 hover:border-accent-400 shadow-xs transition-colors cursor-pointer block"
             >
               <div class="card-body py-3 px-4">
@@ -601,7 +601,7 @@ defmodule Deliberation.Web.ActivityLive do
                 <div class="space-y-2">
                   <.link
                     :for={item <- stmt_data.supporting}
-                    navigate={"/ext/deliberation/activity/#{@activity.id}/node/#{item.bk.block.id}"}
+                    navigate={"/ext/deliberation/argument/#{@activity.id}/node/#{item.bk.block.id}"}
                     class="card bg-base-50 border border-brand-100 hover:border-brand-300 transition-colors cursor-pointer block"
                   >
                     <div class="card-body py-2 px-3">
@@ -619,7 +619,7 @@ defmodule Deliberation.Web.ActivityLive do
                 <div class="space-y-2">
                   <.link
                     :for={item <- stmt_data.attacking}
-                    navigate={"/ext/deliberation/activity/#{@activity.id}/node/#{item.bk.block.id}"}
+                    navigate={"/ext/deliberation/argument/#{@activity.id}/node/#{item.bk.block.id}"}
                     class="card bg-base-50 border border-ink-100 hover:border-ink-300 transition-colors cursor-pointer block"
                   >
                     <div class="card-body py-2 px-3">
@@ -639,7 +639,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <.link
                 :for={bk <- @graph_data.unlinked}
-                navigate={"/ext/deliberation/activity/#{@activity.id}/node/#{bk.block.id}"}
+                navigate={"/ext/deliberation/argument/#{@activity.id}/node/#{bk.block.id}"}
                 class="card bg-base-100 border border-brand-100 hover:border-brand-300 transition-colors cursor-pointer block"
               >
                 <div class="card-body py-2 px-3">
@@ -705,7 +705,7 @@ defmodule Deliberation.Web.ActivityLive do
     else
       socket
       |> put_flash(:error, "Activity not found")
-      |> push_navigate(to: "/ext/deliberation/activities")
+      |> push_navigate(to: "/ext/deliberation/argument")
     end
   end
 

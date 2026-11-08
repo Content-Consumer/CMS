@@ -4,8 +4,8 @@ defmodule Deliberation.Web.Routes do
       scope "/ext/deliberation" do
         pipe_through :browser
 
-        live "/activities", Deliberation.Web.ActivitiesLive, :index
-        live "/activities/new", Deliberation.Web.ActivitiesLive, :new
+        live "/argument", Deliberation.Web.ActivitiesLive, :index
+        live "/argument/new", Deliberation.Web.ActivitiesLive, :new
       end
     end
   end

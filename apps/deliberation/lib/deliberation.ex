@@ -254,7 +254,7 @@ defmodule Deliberation do
         Enum.map(block_kinds, fn bk ->
           %{
             label: bk.group_activity.name,
-            href: "/ext/deliberation/activities/#{bk.group_activity_id}",
+            href: "/ext/deliberation/argument/#{bk.group_activity_id}",
             badge: bk.kind
           }
         end)

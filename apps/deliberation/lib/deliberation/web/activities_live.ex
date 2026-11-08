@@ -9,7 +9,7 @@ defmodule Deliberation.Web.ActivitiesLive do
        page_title: "Argument Activities",
        breadcrumbs: [
          %{label: "Deliberation", path: "/ext/deliberation"},
-         %{label: "Activities", path: nil}
+         %{label: "Argument", path: nil}
        ]
      )}
   end
@@ -27,7 +27,7 @@ defmodule Deliberation.Web.ActivitiesLive do
          socket
          |> assign(activities: [activity | socket.assigns.activities])
          |> put_flash(:info, "Activity \"#{activity.name}\" created")
-         |> push_navigate(to: "/ext/deliberation/activities")}
+         |> push_navigate(to: "/ext/deliberation/argument")}
 
       {:error, :not_configured} ->
         {:noreply, put_flash(socket, :error, "Deliberation extension not fully installed")}
@@ -48,10 +48,10 @@ defmodule Deliberation.Web.ActivitiesLive do
           <p class="text-sm opacity-60 mt-1">Deliberation extension · Argument</p>
         </div>
         <div class="flex items-center gap-2">
-          <.link :if={@live_action == :index} navigate="/ext/deliberation/activities/new" class="btn btn-primary btn-sm">
+          <.link :if={@live_action == :index} navigate="/ext/deliberation/argument/new" class="btn btn-primary btn-sm">
             New Activity
           </.link>
-          <.link :if={@live_action == :new} navigate="/ext/deliberation/activities" class="btn btn-ghost btn-sm">
+          <.link :if={@live_action == :new} navigate="/ext/deliberation/argument" class="btn btn-ghost btn-sm">
             Cancel
           </.link>
         </div>
@@ -83,7 +83,7 @@ defmodule Deliberation.Web.ActivitiesLive do
       <div class="space-y-3">
         <.link
           :for={activity <- @activities}
-          navigate={"/ext/deliberation/activity/#{activity.id}"}
+          navigate={"/ext/deliberation/argument/#{activity.id}"}
           class="card bg-base-100 border border-base-300 shadow-xs hover:border-base-content/20 transition-colors"
         >
           <div class="card-body py-4 px-5">

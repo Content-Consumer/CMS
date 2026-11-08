@@ -36,14 +36,14 @@ config :wiki,
   extension_routes: [
     {"/ext/deliberation", [
       {"/", Deliberation.Web.HomeLive, :index},
-      {"/activities", Deliberation.Web.ActivitiesLive, :index},
-      {"/activities/new", Deliberation.Web.ActivitiesLive, :new},
-      {"/activity/:activity_id", Deliberation.Web.ActivityLive, :show},
-      {"/activity/:activity_id/graph", Deliberation.Web.ActivityLive, :graph},
-      {"/activity/:activity_id/node/:block_id", Deliberation.Web.ActivityLive, :node},
-      {"/voting-activities", Deliberation.Web.VotingActivitiesLive, :index},
-      {"/voting-activities/new", Deliberation.Web.VotingActivitiesLive, :new},
-      {"/voting-activity/:activity_id", Deliberation.Web.VotingActivityLive, :show}
+      {"/argument", Deliberation.Web.ActivitiesLive, :index},
+      {"/argument/new", Deliberation.Web.ActivitiesLive, :new},
+      {"/argument/:activity_id", Deliberation.Web.ActivityLive, :show},
+      {"/argument/:activity_id/graph", Deliberation.Web.ActivityLive, :graph},
+      {"/argument/:activity_id/node/:block_id", Deliberation.Web.ActivityLive, :node},
+      {"/poll", Deliberation.Web.VotingActivitiesLive, :index},
+      {"/poll/new", Deliberation.Web.VotingActivitiesLive, :new},
+      {"/poll/:activity_id", Deliberation.Web.VotingActivityLive, :show}
     ]}
   ]
 

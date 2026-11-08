@@ -6,10 +6,10 @@ defmodule Deliberation.Web.VotingActivitiesLive do
     {:ok,
      assign(socket,
        activities: Deliberation.list_voting_activities(),
-       page_title: "Voting Activities",
+       page_title: "Poll Activities",
        breadcrumbs: [
          %{label: "Deliberation", path: "/ext/deliberation"},
-         %{label: "Voting Activities", path: nil}
+         %{label: "Poll", path: nil}
        ]
      )}
   end
@@ -27,7 +27,7 @@ defmodule Deliberation.Web.VotingActivitiesLive do
          socket
          |> assign(activities: [group_activity | socket.assigns.activities])
          |> put_flash(:info, "Voting activity \"#{group_activity.name}\" created")
-         |> push_navigate(to: "/ext/deliberation/voting-activity/#{group_activity.id}")}
+         |> push_navigate(to: "/ext/deliberation/poll/#{group_activity.id}")}
 
       {:error, :not_configured} ->
         {:noreply, put_flash(socket, :error, "Deliberation extension not fully installed")}
@@ -44,13 +44,13 @@ defmodule Deliberation.Web.VotingActivitiesLive do
     <div class="max-w-3xl mx-auto px-4 py-8">
       <div class="flex items-center justify-between mb-8">
         <div>
-          <h1 class="text-2xl font-bold">Voting Activities</h1>
-          <p class="text-sm opacity-60 mt-1">Deliberation extension · Voting</p>
+          <h1 class="text-2xl font-bold">Poll Activities</h1>
+          <p class="text-sm opacity-60 mt-1">Deliberation extension · Poll</p>
         </div>
-        <.link :if={@live_action == :index} navigate="/ext/deliberation/voting-activities/new" class="btn btn-primary btn-sm">
+        <.link :if={@live_action == :index} navigate="/ext/deliberation/poll/new" class="btn btn-primary btn-sm">
           New Voting Activity
         </.link>
-        <.link :if={@live_action == :new} navigate="/ext/deliberation/voting-activities" class="btn btn-ghost btn-sm">
+        <.link :if={@live_action == :new} navigate="/ext/deliberation/poll" class="btn btn-ghost btn-sm">
           Cancel
         </.link>
       </div>
@@ -89,7 +89,7 @@ defmodule Deliberation.Web.VotingActivitiesLive do
       <div class="space-y-3">
         <.link
           :for={activity <- @activities}
-          navigate={"/ext/deliberation/voting-activity/#{activity.id}"}
+          navigate={"/ext/deliberation/poll/#{activity.id}"}
           class="card bg-base-100 border border-base-300 shadow-xs hover:border-base-content/20 transition-colors"
         >
           <div class="card-body py-4 px-5">
