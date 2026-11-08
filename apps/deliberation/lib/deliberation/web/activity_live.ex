@@ -14,7 +14,6 @@ defmodule Deliberation.Web.ActivityLive do
        downvote_field: nil,
        vote_map: %{},
        voter_map: %{},
-       is_member: false,
        rel_picker: nil,
        rel_search_query: "",
        rel_map: %{},
@@ -43,17 +42,19 @@ defmodule Deliberation.Web.ActivityLive do
         block_ids = Enum.map(block_kinds, & &1.block.id)
         rel_map = if block_ids == [], do: %{}, else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
 
-        user = socket.assigns.current_scope && socket.assigns.current_scope.user
-        is_member = Wiki.Activity.user_in_dimension?(user && user.id, activity.dimension.id)
+        scope =
+          socket.assigns.current_scope
+          |> Wiki.Accounts.Scope.with_dimension(activity.dimension)
+          |> Wiki.Accounts.Scope.with_activity(activity)
 
         assign(socket,
+          current_scope: scope,
           activity: activity,
           block_kinds: block_kinds,
           upvote_field: upvote_field,
           downvote_field: downvote_field,
           vote_map: vote_map,
           voter_map: voter_map,
-          is_member: is_member,
           rel_types: %{"supports" => supports_type, "attacks" => attacks_type},
           rel_map: rel_map,
           rel_picker: nil,
@@ -75,42 +76,43 @@ defmodule Deliberation.Web.ActivityLive do
 
   @impl true
   def handle_event("toggle_vote", %{"block-id" => block_id, "field-id" => field_id}, socket) do
-    user = socket.assigns.current_scope && socket.assigns.current_scope.user
+    scope = socket.assigns.current_scope
 
     cond do
-      is_nil(user) ->
+      is_nil(scope && scope.user) ->
         {:noreply, put_flash(socket, :error, "You must be logged in to vote")}
 
-      not socket.assigns.is_member ->
+      not Wiki.Accounts.Scope.can_act?(scope) ->
         {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
 
       true ->
-      current_value = get_in(socket.assigns.vote_map, [block_id, field_id]) || %{}
+        user = scope.user
+        current_value = get_in(socket.assigns.vote_map, [block_id, field_id]) || %{}
 
-      result =
-        if Metadata.has_voted?(current_value, user.id) do
-          Metadata.remove_vote(block_id, field_id, user.id)
-        else
-          opposing = opposing_field(field_id, socket.assigns)
-          if opposing, do: Metadata.remove_vote(block_id, opposing.id, user.id)
-          Metadata.cast_vote(block_id, field_id, user.id)
+        result =
+          if Metadata.has_voted?(current_value, user.id) do
+            Metadata.remove_vote(block_id, field_id, user.id)
+          else
+            opposing = opposing_field(field_id, socket.assigns)
+            if opposing, do: Metadata.remove_vote(block_id, opposing.id, user.id)
+            Metadata.cast_vote(block_id, field_id, user.id)
+          end
+
+        case result do
+          {:ok, _} ->
+            vote_map = load_vote_map(socket.assigns.block_kinds, socket.assigns.upvote_field, socket.assigns.downvote_field)
+            voter_map = load_voter_map(vote_map, socket.assigns.upvote_field, socket.assigns.downvote_field)
+            {:noreply, assign(socket, vote_map: vote_map, voter_map: voter_map)}
+
+          _ ->
+            {:noreply, put_flash(socket, :error, "Failed to register vote")}
         end
-
-      case result do
-        {:ok, _} ->
-          vote_map = load_vote_map(socket.assigns.block_kinds, socket.assigns.upvote_field, socket.assigns.downvote_field)
-          voter_map = load_voter_map(vote_map, socket.assigns.upvote_field, socket.assigns.downvote_field)
-          {:noreply, assign(socket, vote_map: vote_map, voter_map: voter_map)}
-
-        _ ->
-          {:noreply, put_flash(socket, :error, "Failed to register vote")}
-      end
     end
   end
 
   @impl true
   def handle_event("show_rel_picker", %{"block-id" => id, "type" => type_name}, socket) do
-    if socket.assigns.is_member do
+    if Wiki.Accounts.Scope.can_act?(socket.assigns.current_scope) do
       {:noreply, assign(socket, rel_picker: {id, type_name}, rel_search_query: "")}
     else
       {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
@@ -129,7 +131,7 @@ defmodule Deliberation.Web.ActivityLive do
 
   @impl true
   def handle_event("create_rel", %{"argument-id" => argument_id}, socket) do
-    if not socket.assigns.is_member do
+    if not Wiki.Accounts.Scope.can_act?(socket.assigns.current_scope) do
       {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
     else
       {statement_id, type_name} = socket.assigns.rel_picker
@@ -148,7 +150,7 @@ defmodule Deliberation.Web.ActivityLive do
 
   @impl true
   def handle_event("delete_rel", %{"id" => id}, socket) do
-    if not socket.assigns.is_member do
+    if not Wiki.Accounts.Scope.can_act?(socket.assigns.current_scope) do
       {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
     else
       case Wiki.BlockRelationship.delete_relation(id) do
@@ -196,7 +198,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="text-sm prose prose-sm max-w-none">
               {render_markdown(bk.block.block_content.content)}
             </div>
-            <div :if={(@upvote_field || @downvote_field) && @is_member} class="flex items-center gap-2 mt-3 pt-3 border-t border-base-200">
+            <div :if={(@upvote_field || @downvote_field) && Wiki.Accounts.Scope.can_act?(@current_scope)} class="flex items-center gap-2 mt-3 pt-3 border-t border-base-200">
               <button
                 :if={@upvote_field}
                 phx-click="toggle_vote"
@@ -221,7 +223,7 @@ defmodule Deliberation.Web.ActivityLive do
               </button>
             </div>
             <%!-- Add argument buttons for statement blocks --%>
-            <div :if={bk.kind == "statement" and @is_member and (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
+            <div :if={bk.kind == "statement" and Wiki.Accounts.Scope.can_act?(@current_scope) and (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
               <button
                 :if={@rel_types["supports"]}
                 phx-click="show_rel_picker"
@@ -281,7 +283,7 @@ defmodule Deliberation.Web.ActivityLive do
                 <span class="opacity-60 truncate flex-1">
                   {other_block_preview(rel, bk.block.id)}
                 </span>
-                <button :if={@is_member} phx-click="delete_rel" phx-value-id={rel.id} class="btn btn-ghost btn-xs text-error">
+                <button :if={Wiki.Accounts.Scope.can_act?(@current_scope)} phx-click="delete_rel" phx-value-id={rel.id} class="btn btn-ghost btn-xs text-error">
                   <.icon name="hero-x-mark" class="h-3 w-3" />
                 </button>
               </div>

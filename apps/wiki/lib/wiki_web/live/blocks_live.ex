@@ -154,24 +154,34 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def handle_event("argdown_create", %{"activity_id" => activity_id}, socket) do
-    user = socket.assigns.current_scope && socket.assigns.current_scope.user
+    base_scope = socket.assigns.current_scope
     activity = Wiki.Activity.get_group_activity(activity_id)
 
+    scope =
+      with %Wiki.Accounts.Scope{} <- base_scope,
+           %Wiki.Activity.GroupActivity{} <- activity do
+        base_scope
+        |> Wiki.Accounts.Scope.with_dimension(activity.dimension)
+        |> Wiki.Accounts.Scope.with_activity(activity)
+      else
+        _ -> base_scope
+      end
+
     cond do
-      is_nil(user) ->
+      is_nil(base_scope && base_scope.user) ->
         {:noreply, put_flash(socket, :error, "You must be logged in")}
 
       is_nil(activity) ->
         {:noreply, put_flash(socket, :error, "Activity not found")}
 
-      not Wiki.Activity.user_in_dimension?(user.id, activity.dimension.id) ->
+      not Wiki.Accounts.Scope.can_act?(scope) ->
         {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
 
       true ->
-    %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} = socket.assigns.text_selection
-    kind = socket.assigns.argdown_kind
+        %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} = socket.assigns.text_selection
+        kind = socket.assigns.argdown_kind
 
-    case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id, user.id) do
+        case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id, scope.user.id) do
       {:ok, {new_block, _block_kind}} ->
         new_blocks = [new_block | socket.assigns.blocks]
         {:noreply,
