@@ -43,6 +43,11 @@
   --ink-800: #2c3344;
   --ink-900: #1c2130;
   --ink-950: #0e1119;
+
+  /* Highlight marks — theme-aware, independent of brand scale */
+  --highlight-active-bg: #f59e0b40;
+  --highlight-stale-bg: #94a3b830;
+  --highlight-stale-line: #94a3b8;
 }
 
 [data-theme=dark] {
@@ -84,6 +89,11 @@
   --ink-800: #d9dde6;
   --ink-900: #eef0f4;
   --ink-950: #f8f9fb;
+
+  /* Highlight marks — brighter in dark mode */
+  --highlight-active-bg: #f59e0b55;
+  --highlight-stale-bg: #64748b50;
+  --highlight-stale-line: #64748b;
 }
 
 /* Tailwind utility classes backed by palette CSS vars */
@@ -144,25 +154,25 @@
 
 /* daisyUI theme plugin. You can update this file by fetching the latest version with:
   curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js
-  We ship with two themes, a light one inspired on Phoenix colors and a dark one inspired
-  on Elixir colors. Build your own at: https://daisyui.com/theme-generator/ */
+  NOTE: daisyUI theme plugin requires literal color values — var() references are not supported.
+  Keep these values in sync with the palette vars in :root / [data-theme=dark] above. */
 @plugin "../vendor/daisyui-theme" {
   name: "dark";
   default: false;
   prefersdark: true;
   color-scheme: "dark";
-  --color-base-100: var(--ink-50);
-  --color-base-200: var(--ink-100);
-  --color-base-300: var(--ink-200);
-  --color-base-content: var(--ink-950);
-  --color-primary: var(--brand-500);
-  --color-primary-content: var(--brand-950);
-  --color-secondary: var(--accent-500);
-  --color-secondary-content: var(--accent-950);
-  --color-accent: var(--accent-400);
-  --color-accent-content: var(--accent-950);
-  --color-neutral: var(--ink-300);
-  --color-neutral-content: var(--ink-950);
+  --color-base-100: #0e1119;
+  --color-base-200: #1c2130;
+  --color-base-300: #2c3344;
+  --color-base-content: #f8f9fb;
+  --color-primary: #4d6baf;
+  --color-primary-content: #ccd5e8;
+  --color-secondary: #c24fff;
+  --color-secondary-content: #fdf4ff;
+  --color-accent: #9d1fd1;
+  --color-accent-content: #fdf4ff;
+  --color-neutral: #3e475a;
+  --color-neutral-content: #f8f9fb;
   --color-info: oklch(58% 0.158 241.966);
   --color-info-content: oklch(97% 0.013 236.62);
   --color-success: oklch(60% 0.118 184.704);
@@ -186,18 +196,18 @@
   default: true;
   prefersdark: false;
   color-scheme: "light";
-  --color-base-100: var(--ink-50);
-  --color-base-200: var(--ink-100);
-  --color-base-300: var(--ink-200);
-  --color-base-content: var(--ink-900);
-  --color-primary: var(--brand-500);
-  --color-primary-content: var(--brand-50);
-  --color-secondary: var(--accent-500);
-  --color-secondary-content: var(--accent-50);
-  --color-accent: var(--accent-600);
-  --color-accent-content: var(--accent-50);
-  --color-neutral: var(--ink-600);
-  --color-neutral-content: var(--ink-50);
+  --color-base-100: #f8f9fb;
+  --color-base-200: #eef0f4;
+  --color-base-300: #d9dde6;
+  --color-base-content: #1c2130;
+  --color-primary: #002c8c;
+  --color-primary-content: #ccd5e8;
+  --color-secondary: #bc35f5;
+  --color-secondary-content: #fdf4ff;
+  --color-accent: #9d1fd1;
+  --color-accent-content: #fdf4ff;
+  --color-neutral: #505c73;
+  --color-neutral-content: #f8f9fb;
   --color-info: oklch(62% 0.214 259.815);
   --color-info-content: oklch(97% 0.014 254.604);
   --color-success: oklch(70% 0.14 182.503);
@@ -382,15 +392,17 @@
 
 /* Inline highlights */
 mark.highlight-active {
-  background-color: color-mix(in srgb, var(--brand-300) 40%, transparent);
+  background-color: var(--highlight-active-bg);
+  color: inherit;
   border-radius: 2px;
   padding: 0 1px;
   cursor: pointer;
 }
 
 mark.highlight-stale {
-  background-color: color-mix(in srgb, var(--ink-300) 30%, transparent);
-  text-decoration: underline wavy var(--ink-400);
+  background-color: var(--highlight-stale-bg);
+  color: inherit;
+  text-decoration: underline wavy var(--highlight-stale-line);
   cursor: pointer;
 }
 
