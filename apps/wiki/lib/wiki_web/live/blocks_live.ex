@@ -174,9 +174,6 @@ defmodule WikiWeb.BlocksLive do
       is_nil(activity) ->
         {:noreply, put_flash(socket, :error, "Activity not found")}
 
-      not Wiki.Accounts.Scope.can_act?(scope) ->
-        {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
-
       true ->
         %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} = socket.assigns.text_selection
         kind = socket.assigns.argdown_kind

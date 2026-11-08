@@ -138,7 +138,7 @@ defmodule Deliberation do
       [] -> []
       activity_ids ->
         BlockKind
-        |> where([bk], bk.group_activity_id in ^activity_ids and bk.kind == "argument")
+        |> where([bk], bk.group_activity_id in ^activity_ids and bk.kind == "statement")
         |> preload([bk], [:created_by, block: :block_content, group_activity: []])
         |> Repo.all()
     end

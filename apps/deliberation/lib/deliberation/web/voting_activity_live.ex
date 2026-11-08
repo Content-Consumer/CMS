@@ -100,22 +100,17 @@ defmodule Deliberation.Web.VotingActivityLive do
   def handle_event("save_poll_item", %{"content" => content}, socket) do
     scope = socket.assigns.current_scope
 
-    cond do
-      is_nil(scope && scope.user) ->
-        {:noreply, put_flash(socket, :error, "You must be logged in")}
-
-      not Wiki.Accounts.Scope.can_act?(scope) ->
-        {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
-
-      true ->
-        case Deliberation.create_poll_item(String.trim(content), socket.assigns.activity.id, scope.user.id) do
+    if is_nil(scope && scope.user) do
+      {:noreply, put_flash(socket, :error, "You must be logged in")}
+    else
+      case Deliberation.create_poll_item(String.trim(content), socket.assigns.activity.id, scope.user.id) do
           {:ok, {_block, _kind}} ->
             poll_items = Deliberation.list_poll_items(socket.assigns.activity.id)
             {:noreply,
              socket
              |> assign(poll_items: poll_items, show_editor: false)
              |> refresh_vote_data(poll_items)
-             |> put_flash(:info, "Poll item added")}
+             |> put_flash(:info, "Poll question added")}
 
           {:error, reason} ->
             {:noreply, put_flash(socket, :error, "Failed to create item: #{inspect(reason)}")}
@@ -127,15 +122,10 @@ defmodule Deliberation.Web.VotingActivityLive do
   def handle_event("toggle_vote", %{"block-id" => block_id, "field-id" => field_id}, socket) do
     scope = socket.assigns.current_scope
 
-    cond do
-      is_nil(scope && scope.user) ->
-        {:noreply, put_flash(socket, :error, "You must be logged in to vote")}
-
-      not Wiki.Accounts.Scope.can_act?(scope) ->
-        {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
-
-      true ->
-        user = scope.user
+    if is_nil(scope && scope.user) do
+      {:noreply, put_flash(socket, :error, "You must be logged in to vote")}
+    else
+      user = scope.user
         current_value = get_in(socket.assigns.vote_map, [block_id, field_id]) || %{}
 
         result =
@@ -147,13 +137,13 @@ defmodule Deliberation.Web.VotingActivityLive do
             Metadata.cast_vote(block_id, field_id, user.id)
           end
 
-        case result do
-          {:ok, _} ->
-            {:noreply, refresh_vote_data(socket, socket.assigns.poll_items)}
+      case result do
+        {:ok, _} ->
+          {:noreply, refresh_vote_data(socket, socket.assigns.poll_items)}
 
-          _ ->
-            {:noreply, put_flash(socket, :error, "Failed to register vote")}
-        end
+        _ ->
+          {:noreply, put_flash(socket, :error, "Failed to register vote")}
+      end
     end
   end
 
@@ -352,22 +342,22 @@ defmodule Deliberation.Web.VotingActivityLive do
       <div :if={@tab == "poll"}>
         <div class="flex justify-end mb-4">
           <button
-            :if={!@show_editor && Wiki.Accounts.Scope.can_act?(@current_scope)}
+            :if={!@show_editor && @current_scope && @current_scope.user}
             phx-click="show_editor"
             class="btn btn-primary btn-sm gap-1"
           >
-            <.icon name="hero-plus" class="h-4 w-4" /> New poll item
+            <.icon name="hero-plus" class="h-4 w-4" /> Add poll question
           </button>
         </div>
 
         <%!-- Inline editor --%>
         <div :if={@show_editor} class="card bg-base-200 mb-6">
           <div class="card-body">
-            <h3 class="font-semibold text-sm mb-2">New poll item</h3>
+            <h3 class="font-semibold text-sm mb-2">Add poll question</h3>
             <form phx-submit="save_poll_item">
               <textarea
                 name="content"
-                placeholder="State the proposition to vote on…"
+                placeholder="Enter the question or proposition to vote on…"
                 class="textarea textarea-bordered w-full mb-3"
                 rows="3"
                 autofocus
@@ -387,7 +377,7 @@ defmodule Deliberation.Web.VotingActivityLive do
             <div class="card-body py-4 px-5">
               <%!-- Block meta --%>
               <div class="flex items-center gap-2 mb-2">
-                <span class="badge badge-sm badge-ghost">poll item</span>
+                <span class="badge badge-sm badge-ghost">poll question</span>
                 <span :if={bk.created_by} class="text-xs opacity-40 ml-auto">
                   Added by {bk.created_by.email}
                 </span>
@@ -401,7 +391,7 @@ defmodule Deliberation.Web.VotingActivityLive do
               <%!-- Vote buttons --%>
               <div :if={@upvote_field || @downvote_field} class="flex items-center gap-2 pt-3 border-t border-base-200">
                 <button
-                  :if={@upvote_field && Wiki.Accounts.Scope.can_act?(@current_scope)}
+                  :if={@upvote_field && @current_scope && @current_scope.user}
                   phx-click="toggle_vote"
                   phx-value-block-id={bk.block.id}
                   phx-value-field-id={@upvote_field.id}
@@ -413,7 +403,7 @@ defmodule Deliberation.Web.VotingActivityLive do
                   <span class="opacity-60">{vote_count_for(bk.block.id, @upvote_field, @vote_map)}</span>
                 </button>
                 <button
-                  :if={@downvote_field && Wiki.Accounts.Scope.can_act?(@current_scope)}
+                  :if={@downvote_field && @current_scope && @current_scope.user}
                   phx-click="toggle_vote"
                   phx-value-block-id={bk.block.id}
                   phx-value-field-id={@downvote_field.id}
@@ -426,7 +416,7 @@ defmodule Deliberation.Web.VotingActivityLive do
                 </button>
 
                 <%!-- Reason section --%>
-                <div :if={Wiki.Accounts.Scope.can_act?(@current_scope) && has_voted_either?(bk.block.id, @vote_map, @upvote_field, @downvote_field, @current_scope)} class="ml-auto flex items-center gap-2">
+                <div :if={@current_scope && @current_scope.user && has_voted_either?(bk.block.id, @vote_map, @upvote_field, @downvote_field, @current_scope)} class="ml-auto flex items-center gap-2">
                   <span :if={@reason_map[bk.block.id]} class="text-xs opacity-60 max-w-xs truncate">
                     Reason: {reason_preview(@reason_map[bk.block.id])}
                   </span>
@@ -451,13 +441,13 @@ defmodule Deliberation.Web.VotingActivityLive do
 
               <%!-- Reason picker --%>
               <div :if={@reason_picker_block_id == bk.block.id} class="mt-3 pt-3 border-t border-base-200">
-                <p class="text-xs font-medium opacity-60 mb-2">Pick a reason from the linked argument activities:</p>
+                <p class="text-xs font-medium opacity-60 mb-2">Pick a statement from the linked argument activities as your reason:</p>
                 <form phx-change="search_reason" phx-submit="search_reason" class="mb-2">
                   <input
                     type="text"
                     name="query"
                     value={@reason_search_query}
-                    placeholder="Filter arguments…"
+                    placeholder="Filter statements…"
                     phx-debounce="150"
                     class="input input-sm input-bordered w-full"
                     autofocus
@@ -467,7 +457,7 @@ defmodule Deliberation.Web.VotingActivityLive do
                   No argument activities linked. Link one above to cite reasons.
                 </div>
                 <div :if={filter_argument_blocks(@argument_blocks, @reason_search_query) == [] && @argument_blocks != []} class="text-xs opacity-50 py-2">
-                  No arguments match your search.
+                  No statements match your search.
                 </div>
                 <div class="flex flex-col gap-1 max-h-56 overflow-y-auto">
                   <button
@@ -487,7 +477,7 @@ defmodule Deliberation.Web.VotingActivityLive do
           </div>
 
           <div :if={@poll_items == []} class="text-center py-16 text-base-content/40">
-            No poll items yet.
+            No poll questions yet.
             <span :if={Wiki.Accounts.Scope.can_act?(@current_scope)}> Add one above.</span>
           </div>
         </div>
