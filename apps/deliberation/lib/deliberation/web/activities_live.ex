@@ -47,12 +47,17 @@ defmodule Deliberation.Web.ActivitiesLive do
           <h1 class="text-2xl font-bold">Argument Activities</h1>
           <p class="text-sm opacity-60 mt-1">Deliberation extension · Argument</p>
         </div>
-        <.link :if={@live_action == :index} navigate="/ext/deliberation/activities/new" class="btn btn-primary btn-sm">
-          New Activity
-        </.link>
-        <.link :if={@live_action == :new} navigate="/ext/deliberation/activities" class="btn btn-ghost btn-sm">
-          Cancel
-        </.link>
+        <div class="flex items-center gap-2">
+          <.link navigate="/ext/deliberation/voting-activities" class="btn btn-ghost btn-sm">
+            Voting Activities
+          </.link>
+          <.link :if={@live_action == :index} navigate="/ext/deliberation/activities/new" class="btn btn-primary btn-sm">
+            New Activity
+          </.link>
+          <.link :if={@live_action == :new} navigate="/ext/deliberation/activities" class="btn btn-ghost btn-sm">
+            Cancel
+          </.link>
+        </div>
       </div>
 
       <div :if={@live_action == :new} class="card bg-base-200 mb-8">

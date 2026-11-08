@@ -38,7 +38,10 @@ config :wiki,
       {"/", Deliberation.Web.HomeLive, :index},
       {"/activities", Deliberation.Web.ActivitiesLive, :index},
       {"/activities/new", Deliberation.Web.ActivitiesLive, :new},
-      {"/activity/:activity_id", Deliberation.Web.ActivityLive, :show}
+      {"/activity/:activity_id", Deliberation.Web.ActivityLive, :show},
+      {"/voting-activities", Deliberation.Web.VotingActivitiesLive, :index},
+      {"/voting-activities/new", Deliberation.Web.VotingActivitiesLive, :new},
+      {"/voting-activity/:activity_id", Deliberation.Web.VotingActivityLive, :show}
     ]}
   ]
 
