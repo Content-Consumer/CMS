@@ -33,6 +33,9 @@ config :wiki,
   ecto_repos: [Wiki.Repo],
   generators: [timestamp_type: :utc_datetime],
   extensions: [Deliberation],
+  extension_nav: [
+    %{name: "Deliberation", path: "/ext/deliberation"}
+  ],
   extension_routes: [
     {"/ext/deliberation", [
       {"/", Deliberation.Web.HomeLive, :index},

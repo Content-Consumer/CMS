@@ -31,12 +31,7 @@ defmodule WikiWeb.Layouts do
   slot :inner_block, required: true
 
   def app(assigns) do
-    extensions =
-      Wiki.Block.Extensions.registered()
-      |> Enum.filter(fn mod ->
-        Code.ensure_loaded?(mod) && function_exported?(mod, :home_path, 0)
-      end)
-      |> Enum.map(fn mod -> %{name: mod.name(), path: mod.home_path()} end)
+    extensions = Application.get_env(:wiki, :extension_nav, [])
 
     active_ext =
       case assigns.breadcrumbs do
@@ -90,10 +85,10 @@ defmodule WikiWeb.Layouts do
       </div>
       <div class="flex items-center gap-1 shrink-0">
         <%= if @current_scope && @current_scope.user do %>
-          <div class="tooltip tooltip-bottom" data-tip={@current_scope.user.username || @current_scope.user.email}>
+          <div class="tooltip tooltip-bottom" data-tip={Map.get(@current_scope.user, :username) || @current_scope.user.email}>
             <div class="avatar avatar-placeholder">
               <div class="bg-brand-100 text-brand-700 rounded-full w-7 h-7 flex items-center justify-center text-xs font-semibold">
-                {String.upcase(String.at(@current_scope.user.username || @current_scope.user.email, 0))}
+                {String.upcase(String.at(Map.get(@current_scope.user, :username) || @current_scope.user.email, 0))}
               </div>
             </div>
           </div>
