@@ -9,6 +9,8 @@ defmodule Deliberation.Web.ActivityLive do
      assign(socket,
        activity: nil,
        block_kinds: [],
+       filtered_block_kinds: [],
+       search_query: "",
        breadcrumbs: [],
        upvote_field: nil,
        downvote_field: nil,
@@ -126,6 +128,11 @@ defmodule Deliberation.Web.ActivityLive do
   # ── Events ───────────────────────────────────────────────────────────────────
 
   @impl true
+  def handle_event("search_activity", %{"query" => query}, socket) do
+    {:noreply, apply_search(socket, query)}
+  end
+
+  @impl true
   def handle_event("toggle_vote", %{"block-id" => block_id, "field-id" => field_id}, socket) do
     scope = socket.assigns.current_scope
 
@@ -203,10 +210,10 @@ defmodule Deliberation.Web.ActivityLive do
               do: %{},
               else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
 
-          graph_data = build_graph_data(socket.assigns.block_kinds, rel_map, socket.assigns.rel_types)
-
           {:noreply,
-           assign(socket, rel_map: rel_map, graph_data: graph_data, rel_picker: nil, rel_search_query: "")}
+           socket
+           |> assign(rel_map: rel_map, rel_picker: nil, rel_search_query: "")
+           |> apply_search(socket.assigns.search_query)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, "Failed to add relation")}
@@ -229,8 +236,10 @@ defmodule Deliberation.Web.ActivityLive do
               do: %{},
               else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
 
-          graph_data = build_graph_data(socket.assigns.block_kinds, rel_map, socket.assigns.rel_types)
-          {:noreply, assign(socket, rel_map: rel_map, graph_data: graph_data)}
+          {:noreply,
+           socket
+           |> assign(rel_map: rel_map)
+           |> apply_search(socket.assigns.search_query)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, "Failed to remove relation")}
@@ -253,22 +262,42 @@ defmodule Deliberation.Web.ActivityLive do
         </p>
       </div>
 
-      <%!-- Tabs (not shown for node detail) --%>
-      <div :if={@live_action != :node} role="tablist" class="tabs tabs-bordered mb-6">
-        <.link
-          role="tab"
-          navigate={"/ext/deliberation/activity/#{@activity.id}"}
-          class={"tab #{if @live_action == :show, do: "tab-active"}"}
-        >
-          List
-        </.link>
-        <.link
-          role="tab"
-          navigate={"/ext/deliberation/activity/#{@activity.id}/graph"}
-          class={"tab #{if @live_action == :graph, do: "tab-active"}"}
-        >
-          Graph
-        </.link>
+      <%!-- Tabs + search bar (not shown for node detail) --%>
+      <div :if={@live_action != :node}>
+        <div class="flex items-center gap-3 mb-4">
+          <div role="tablist" class="tabs tabs-bordered shrink-0">
+            <.link
+              role="tab"
+              navigate={"/ext/deliberation/activity/#{@activity.id}"}
+              class={"tab #{if @live_action == :show, do: "tab-active"}"}
+            >
+              List
+            </.link>
+            <.link
+              role="tab"
+              navigate={"/ext/deliberation/activity/#{@activity.id}/graph"}
+              class={"tab #{if @live_action == :graph, do: "tab-active"}"}
+            >
+              Graph
+            </.link>
+          </div>
+          <form phx-change="search_activity" phx-submit="search_activity" class="flex-1">
+            <input
+              type="text"
+              name="query"
+              value={@search_query}
+              placeholder="Search blocks…"
+              phx-debounce="200"
+              class="input input-bordered input-sm w-full"
+            />
+          </form>
+        </div>
+        <p :if={@search_query != "" && @filtered_block_kinds == []} class="text-sm opacity-50 py-4 text-center">
+          No blocks match "<em>{@search_query}</em>".
+        </p>
+        <p :if={@search_query != "" && @filtered_block_kinds != []} class="text-xs opacity-40 mb-4">
+          {length(@filtered_block_kinds)} of {length(@block_kinds)} blocks shown
+        </p>
       </div>
 
       <%!-- Node detail (:node) --%>
@@ -433,7 +462,7 @@ defmodule Deliberation.Web.ActivityLive do
       <%!-- List view (:show) --%>
       <div :if={@live_action == :show}>
         <div class="space-y-3">
-          <div :for={bk <- @block_kinds} class="card bg-base-100 border border-base-300 shadow-xs">
+          <div :for={bk <- @filtered_block_kinds} class="card bg-base-100 border border-base-300 shadow-xs">
             <div class="card-body py-4 px-5">
               <div class="flex items-center gap-2 mb-2 flex-wrap">
                 <span class={"badge badge-sm border-0 #{kind_badge_class(bk.kind)}"}>
@@ -532,6 +561,7 @@ defmodule Deliberation.Web.ActivityLive do
       </div>
 
       <%!-- Graph view (:graph) --%>
+
       <div :if={@live_action == :graph}>
         <div :if={@block_kinds == []} class="text-center py-16 text-base-content/40">
           No blocks added to this activity yet.
@@ -657,7 +687,8 @@ defmodule Deliberation.Web.ActivityLive do
         |> Wiki.Accounts.Scope.with_dimension(activity.dimension)
         |> Wiki.Accounts.Scope.with_activity(activity)
 
-      assign(socket,
+      socket
+      |> assign(
         current_scope: scope,
         activity: activity,
         block_kinds: block_kinds,
@@ -668,9 +699,9 @@ defmodule Deliberation.Web.ActivityLive do
         rel_types: rel_types,
         rel_map: rel_map,
         rel_picker: nil,
-        graph_data: graph_data,
         page_title: activity.name
       )
+      |> apply_search(socket.assigns[:search_query] || "")
     else
       socket
       |> put_flash(:error, "Activity not found")
@@ -727,6 +758,27 @@ defmodule Deliberation.Web.ActivityLive do
     unlinked = Enum.reject(arguments, &MapSet.member?(linked_ids, &1.block.id))
 
     %{statements: statement_data, unlinked: unlinked}
+  end
+
+  defp apply_search(socket, query) do
+    q = String.trim(query) |> String.downcase()
+
+    filtered =
+      if q == "" do
+        socket.assigns.block_kinds
+      else
+        Enum.filter(socket.assigns.block_kinds, fn bk ->
+          String.contains?(String.downcase(bk.block.block_content.content), q)
+        end)
+      end
+
+    graph_data = build_graph_data(filtered, socket.assigns.rel_map, socket.assigns.rel_types)
+
+    assign(socket,
+      search_query: query,
+      filtered_block_kinds: filtered,
+      graph_data: graph_data
+    )
   end
 
   defp opposing_field(field_id, %{upvote_field: up, downvote_field: down}) do
