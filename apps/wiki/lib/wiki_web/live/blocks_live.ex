@@ -64,7 +64,11 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def handle_event("edit_block_title", %{"block_id" => block_id}, socket) do
-    {:noreply, assign(socket, editing_title_id: block_id)}
+    if owns_block?(socket, block_id) do
+      {:noreply, assign(socket, editing_title_id: block_id)}
+    else
+      {:noreply, put_flash(socket, :error, "You can only edit blocks you created")}
+    end
   end
 
   @impl true
@@ -74,20 +78,28 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def handle_event("save_block_title", %{"block_id" => block_id, "title" => title}, socket) do
-    field = socket.assigns.title_field
-    title = String.trim(title)
+    if not owns_block?(socket, block_id) do
+      {:noreply, put_flash(socket, :error, "You can only edit blocks you created")}
+    else
+      field = socket.assigns.title_field
+      title = String.trim(title)
 
-    if field do
-      Wiki.Metadata.set_value(block_id, field.id, %{"value" => title})
+      if field do
+        Wiki.Metadata.set_value(block_id, field.id, %{"value" => title})
+      end
+
+      title_map = Map.put(socket.assigns.title_map, block_id, if(title == "", do: nil, else: title))
+      {:noreply, assign(socket, editing_title_id: nil, title_map: title_map)}
     end
-
-    title_map = Map.put(socket.assigns.title_map, block_id, if(title == "", do: nil, else: title))
-    {:noreply, assign(socket, editing_title_id: nil, title_map: title_map)}
   end
 
   @impl true
   def handle_event("edit_block", %{"id" => id}, socket) do
-    {:noreply, assign(socket, editing_block_id: id, show_editor: false)}
+    if owns_block?(socket, id) do
+      {:noreply, assign(socket, editing_block_id: id, show_editor: false)}
+    else
+      {:noreply, put_flash(socket, :error, "You can only edit blocks you created")}
+    end
   end
 
   @impl true
@@ -97,30 +109,38 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def handle_event("update_block", %{"_id" => id, "content" => content}, socket) do
-    case TextBlock.update_block(id, content) do
-      {:ok, updated_block} ->
-        updated_blocks =
-          Enum.map(socket.assigns.blocks, fn b -> if b.id == id, do: updated_block, else: b end)
+    if not owns_block?(socket, id) do
+      {:noreply, put_flash(socket, :error, "You can only edit blocks you created")}
+    else
+      case TextBlock.update_block(id, content) do
+        {:ok, updated_block} ->
+          updated_blocks =
+            Enum.map(socket.assigns.blocks, fn b -> if b.id == id, do: updated_block, else: b end)
 
-        {:noreply,
-         socket
-         |> assign(blocks: updated_blocks, editing_block_id: nil)
-         |> put_flash(:info, "Block updated")}
+          {:noreply,
+           socket
+           |> assign(blocks: updated_blocks, editing_block_id: nil)
+           |> put_flash(:info, "Block updated")}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to update block")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to update block")}
+      end
     end
   end
 
   @impl true
   def handle_event("delete_block", %{"id" => id}, socket) do
-    case TextBlock.delete_block(id) do
-      {:ok, _} ->
-        new_blocks = Enum.reject(socket.assigns.blocks, &(&1.id == id))
-        {:noreply, socket |> put_blocks(new_blocks) |> assign(title_map: Map.delete(socket.assigns.title_map, id))}
+    if not owns_block?(socket, id) do
+      {:noreply, put_flash(socket, :error, "You can only delete blocks you created")}
+    else
+      case TextBlock.delete_block(id) do
+        {:ok, _} ->
+          new_blocks = Enum.reject(socket.assigns.blocks, &(&1.id == id))
+          {:noreply, socket |> put_blocks(new_blocks) |> assign(title_map: Map.delete(socket.assigns.title_map, id))}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to delete block")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to delete block")}
+      end
     end
   end
 
@@ -330,6 +350,12 @@ defmodule WikiWeb.BlocksLive do
       end
 
     assign(socket, blocks: blocks, title_map: title_map, rel_map: rel_map, subblock_map: subblock_map)
+  end
+
+  defp owns_block?(socket, block_id) do
+    user_id = socket.assigns.current_scope && socket.assigns.current_scope.user && socket.assigns.current_scope.user.id
+    block = Enum.find(socket.assigns.blocks, &(&1.id == block_id))
+    not is_nil(user_id) && not is_nil(block) && block.created_by_id == user_id
   end
 
   defp render_markdown(content) do

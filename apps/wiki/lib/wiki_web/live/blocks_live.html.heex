@@ -85,6 +85,7 @@
           </.link>
           <div class="flex items-center gap-1">
             <button
+              :if={@current_scope && @current_scope.user && @current_scope.user.id == block.created_by_id}
               phx-click="edit_block"
               phx-value-id={block.id}
               class="btn btn-ghost btn-xs"
@@ -93,6 +94,7 @@
               <.icon name="hero-pencil-square" class="h-4 w-4" />
             </button>
             <button
+              :if={@current_scope && @current_scope.user && @current_scope.user.id == block.created_by_id}
               phx-click="delete_block"
               phx-value-id={block.id}
               class="btn btn-ghost btn-xs text-error"
@@ -108,7 +110,7 @@
                 tabindex="0"
                 class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-1 shadow-md border border-base-300 text-sm"
               >
-                <li>
+                <li :if={@current_scope && @current_scope.user && @current_scope.user.id == block.created_by_id}>
                   <button
                     phx-click="edit_block_title"
                     phx-value-block_id={block.id}

@@ -92,7 +92,11 @@ defmodule WikiWeb.BlockDetailLive do
               </span>
             </div>
           </div>
-          <.link href="/blocks" class="btn btn-ghost btn-sm gap-1">
+          <.link
+            :if={@current_scope && @current_scope.user && @current_scope.user.id == @block.created_by_id}
+            href="/blocks"
+            class="btn btn-ghost btn-sm gap-1"
+          >
             <.icon name="hero-pencil-square" class="h-4 w-4" /> Edit
           </.link>
         </div>
