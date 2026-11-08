@@ -27,6 +27,7 @@ defmodule WikiWeb.Layouts do
   """
   attr :flash, :map, required: true
   attr :breadcrumbs, :list, default: []
+  attr :current_scope, :any, default: nil
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -59,6 +60,26 @@ defmodule WikiWeb.Layouts do
             </li>
           </ul>
         </div>
+      </div>
+      <div class="flex items-center gap-1">
+        <%= if @current_scope && @current_scope.user do %>
+          <div class="tooltip tooltip-bottom" data-tip={@current_scope.user.email}>
+            <div class="avatar avatar-placeholder">
+              <div class="bg-brand-100 text-brand-700 rounded-full w-7 h-7 flex items-center justify-center text-xs font-semibold">
+                {String.upcase(String.at(@current_scope.user.email, 0))}
+              </div>
+            </div>
+          </div>
+          <.link href={~p"/users/settings"} class="btn btn-ghost btn-sm btn-square" title="Settings">
+            <.icon name="hero-cog-6-tooth" class="h-5 w-5" />
+          </.link>
+          <.link href={~p"/users/log-out"} method="delete" class="btn btn-ghost btn-sm btn-square" title="Log out">
+            <.icon name="hero-arrow-right-on-rectangle" class="h-5 w-5" />
+          </.link>
+        <% else %>
+          <.link href={~p"/users/log-in"} class="btn btn-ghost btn-sm">Log in</.link>
+          <.link href={~p"/users/register"} class="btn btn-primary btn-sm">Register</.link>
+        <% end %>
       </div>
     </nav>
 

@@ -15,7 +15,7 @@ defmodule Deliberation.Web.HomeLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs}>
+    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs} current_scope={@current_scope}>
       <div class="max-w-3xl mx-auto px-4 py-8">
         <div class="mb-8">
           <h1 class="text-2xl font-bold">Deliberation</h1>

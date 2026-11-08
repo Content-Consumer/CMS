@@ -252,7 +252,7 @@ defmodule Deliberation.Web.ActivityLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs}>
+    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs} current_scope={@current_scope}>
     <div class="max-w-4xl mx-auto px-4 py-8">
       <div class="mb-6">
         <h1 class="text-2xl font-bold">{@activity.name}</h1>

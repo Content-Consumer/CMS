@@ -254,7 +254,7 @@ defmodule Deliberation.Web.VotingActivityLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs}>
+    <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs} current_scope={@current_scope}>
     <div class="max-w-3xl mx-auto px-4 py-8">
 
       <%!-- Header --%>
