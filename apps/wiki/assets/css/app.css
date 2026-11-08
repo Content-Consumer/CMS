@@ -1,6 +1,130 @@
 /* See the Tailwind configuration guide for advanced usage
    https://tailwindcss.com/docs/configuration */
 
+/* ============================================================
+   APP PALETTE — replace dummy hex values with real brand colors
+   ============================================================ */
+:root {
+  /* Brand (primary) */
+  --brand-50: #ccd5e8;
+  --brand-100: #b3c0dd;
+  --brand-200: #8096c6;
+  --brand-300: #4d6baf;
+  --brand-400: #1a4198;
+  --brand-500: #002c8c;
+  --brand-600: #002370;
+  --brand-700: #001a54;
+  --brand-800: #001646;
+  --brand-900: #000d2a;
+  --brand-950: #00091c;
+
+  /* Accent (secondary) */
+  --accent-50: #fdf4ff;
+  --accent-100: #f8e4ff;
+  --accent-200: #f0c6ff;
+  --accent-300: #e49dff;
+  --accent-400: #d366ff;
+  --accent-500: #bc35f5;
+  --accent-600: #9d1fd1;
+  --accent-700: #7e17aa;
+  --accent-800: #621387;
+  --accent-900: #4a0f65;
+  --accent-950: #2a0540;
+
+  /* Ink (text / neutral) */
+  --ink-50: #f8f9fb;
+  --ink-100: #eef0f4;
+  --ink-200: #d9dde6;
+  --ink-300: #b8bfcd;
+  --ink-400: #8e98ae;
+  --ink-500: #68748e;
+  --ink-600: #505c73;
+  --ink-700: #3e475a;
+  --ink-800: #2c3344;
+  --ink-900: #1c2130;
+  --ink-950: #0e1119;
+}
+
+[data-theme=dark] {
+  /* Brand — shift lighter for dark backgrounds */
+  --brand-50: #00091c;
+  --brand-100: #000d2a;
+  --brand-200: #001646;
+  --brand-300: #001a54;
+  --brand-400: #002370;
+  --brand-500: #002c8c;
+  --brand-600: #1a4198;
+  --brand-700: #4d6baf;
+  --brand-800: #8096c6;
+  --brand-900: #b3c0dd;
+  --brand-950: #ccd5e8;
+
+  /* Accent */
+  --accent-50: #2a0540;
+  --accent-100: #4a0f65;
+  --accent-200: #621387;
+  --accent-300: #7e17aa;
+  --accent-400: #9d1fd1;
+  --accent-500: #c24fff;
+  --accent-600: #d375ff;
+  --accent-700: #e49dff;
+  --accent-800: #f0c6ff;
+  --accent-900: #f8e4ff;
+  --accent-950: #fdf4ff;
+
+  /* Ink */
+  --ink-50: #0e1119;
+  --ink-100: #1c2130;
+  --ink-200: #2c3344;
+  --ink-300: #3e475a;
+  --ink-400: #505c73;
+  --ink-500: #68748e;
+  --ink-600: #8e98ae;
+  --ink-700: #b8bfcd;
+  --ink-800: #d9dde6;
+  --ink-900: #eef0f4;
+  --ink-950: #f8f9fb;
+}
+
+/* Tailwind utility classes backed by palette CSS vars */
+@theme inline {
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
+
+  --color-accent-50: var(--accent-50);
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+  --color-accent-950: var(--accent-950);
+
+  --color-ink-50: var(--ink-50);
+  --color-ink-100: var(--ink-100);
+  --color-ink-200: var(--ink-200);
+  --color-ink-300: var(--ink-300);
+  --color-ink-400: var(--ink-400);
+  --color-ink-500: var(--ink-500);
+  --color-ink-600: var(--ink-600);
+  --color-ink-700: var(--ink-700);
+  --color-ink-800: var(--ink-800);
+  --color-ink-900: var(--ink-900);
+  --color-ink-950: var(--ink-950);
+}
+
 @import "tailwindcss" source(none);
 @source "../css";
 @source "../js";
@@ -27,18 +151,18 @@
   default: false;
   prefersdark: true;
   color-scheme: "dark";
-  --color-base-100: oklch(30.33% 0.016 252.42);
-  --color-base-200: oklch(25.26% 0.014 253.1);
-  --color-base-300: oklch(20.15% 0.012 254.09);
-  --color-base-content: oklch(97.807% 0.029 256.847);
-  --color-primary: oklch(58% 0.233 277.117);
-  --color-primary-content: oklch(96% 0.018 272.314);
-  --color-secondary: oklch(58% 0.233 277.117);
-  --color-secondary-content: oklch(96% 0.018 272.314);
-  --color-accent: oklch(60% 0.25 292.717);
-  --color-accent-content: oklch(96% 0.016 293.756);
-  --color-neutral: oklch(37% 0.044 257.287);
-  --color-neutral-content: oklch(98% 0.003 247.858);
+  --color-base-100: var(--ink-50);
+  --color-base-200: var(--ink-100);
+  --color-base-300: var(--ink-200);
+  --color-base-content: var(--ink-950);
+  --color-primary: var(--brand-500);
+  --color-primary-content: var(--brand-950);
+  --color-secondary: var(--accent-500);
+  --color-secondary-content: var(--accent-950);
+  --color-accent: var(--accent-400);
+  --color-accent-content: var(--accent-950);
+  --color-neutral: var(--ink-300);
+  --color-neutral-content: var(--ink-950);
   --color-info: oklch(58% 0.158 241.966);
   --color-info-content: oklch(97% 0.013 236.62);
   --color-success: oklch(60% 0.118 184.704);
@@ -62,18 +186,18 @@
   default: true;
   prefersdark: false;
   color-scheme: "light";
-  --color-base-100: oklch(98% 0 0);
-  --color-base-200: oklch(96% 0.001 286.375);
-  --color-base-300: oklch(92% 0.004 286.32);
-  --color-base-content: oklch(21% 0.006 285.885);
-  --color-primary: oklch(70% 0.213 47.604);
-  --color-primary-content: oklch(98% 0.016 73.684);
-  --color-secondary: oklch(55% 0.027 264.364);
-  --color-secondary-content: oklch(98% 0.002 247.839);
-  --color-accent: oklch(0% 0 0);
-  --color-accent-content: oklch(100% 0 0);
-  --color-neutral: oklch(44% 0.017 285.786);
-  --color-neutral-content: oklch(98% 0 0);
+  --color-base-100: var(--ink-50);
+  --color-base-200: var(--ink-100);
+  --color-base-300: var(--ink-200);
+  --color-base-content: var(--ink-900);
+  --color-primary: var(--brand-500);
+  --color-primary-content: var(--brand-50);
+  --color-secondary: var(--accent-500);
+  --color-secondary-content: var(--accent-50);
+  --color-accent: var(--accent-600);
+  --color-accent-content: var(--accent-50);
+  --color-neutral: var(--ink-600);
+  --color-neutral-content: var(--ink-50);
   --color-info: oklch(62% 0.214 259.815);
   --color-info-content: oklch(97% 0.014 254.604);
   --color-success: oklch(70% 0.14 182.503);
@@ -101,56 +225,172 @@
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 /* Make LiveView wrapper divs transparent for layout */
-[data-phx-session], [data-phx-teleported-src] { display: contents }
+[data-phx-session],
+[data-phx-teleported-src] {
+  display: contents
+}
 
 /* TipTap editor */
 .tiptap-editor .ProseMirror {
   outline: none;
 }
 
-.tiptap-editor .ProseMirror > * + * {
+.tiptap-editor .ProseMirror>*+* {
   margin-top: 0.6em;
 }
 
-.tiptap-editor .ProseMirror h1 { font-size: 1.875rem; font-weight: 700; line-height: 1.2; }
-.tiptap-editor .ProseMirror h2 { font-size: 1.5rem;   font-weight: 700; line-height: 1.3; }
-.tiptap-editor .ProseMirror h3 { font-size: 1.25rem;  font-weight: 600; line-height: 1.4; }
-.tiptap-editor .ProseMirror h4 { font-size: 1.125rem; font-weight: 600; }
-.tiptap-editor .ProseMirror ul { list-style-type: disc;    padding-left: 1.5rem; }
-.tiptap-editor .ProseMirror ol { list-style-type: decimal; padding-left: 1.5rem; }
-.tiptap-editor .ProseMirror li { margin-top: 0.25rem; }
-.tiptap-editor .ProseMirror strong { font-weight: 700; }
-.tiptap-editor .ProseMirror em { font-style: italic; }
-.tiptap-editor .ProseMirror code { font-family: monospace; background: oklch(0% 0 0 / 8%); padding: 0.1em 0.3em; border-radius: 0.2em; }
-.tiptap-editor .ProseMirror blockquote { border-left: 3px solid oklch(0% 0 0 / 20%); padding-left: 1rem; opacity: 0.8; }
+.tiptap-editor .ProseMirror h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.tiptap-editor .ProseMirror h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.tiptap-editor .ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+.tiptap-editor .ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+}
+
+.tiptap-editor .ProseMirror li {
+  margin-top: 0.25rem;
+}
+
+.tiptap-editor .ProseMirror strong {
+  font-weight: 700;
+}
+
+.tiptap-editor .ProseMirror em {
+  font-style: italic;
+}
+
+.tiptap-editor .ProseMirror code {
+  font-family: monospace;
+  background: color-mix(in srgb, var(--ink-900) 8%, transparent);
+  padding: 0.1em 0.3em;
+  border-radius: 0.2em;
+}
+
+.tiptap-editor .ProseMirror blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--ink-900) 20%, transparent);
+  padding-left: 1rem;
+  opacity: 0.8;
+}
 
 /* Rendered markdown preview */
-.block-preview h1 { font-size: 1.875rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.5rem; }
-.block-preview h2 { font-size: 1.5rem;   font-weight: 700; line-height: 1.3; margin-bottom: 0.4rem; }
-.block-preview h3 { font-size: 1.25rem;  font-weight: 600; line-height: 1.4; margin-bottom: 0.4rem; }
-.block-preview h4 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.3rem; }
-.block-preview p  { margin-bottom: 0.6rem; }
-.block-preview ul { list-style-type: disc;    padding-left: 1.5rem; margin-bottom: 0.6rem; }
-.block-preview ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.6rem; }
-.block-preview li { margin-bottom: 0.2rem; }
-.block-preview strong { font-weight: 700; }
-.block-preview em { font-style: italic; }
-.block-preview code { font-family: monospace; background: oklch(0% 0 0 / 8%); padding: 0.1em 0.3em; border-radius: 0.2em; }
-.block-preview blockquote { border-left: 3px solid oklch(0% 0 0 / 20%); padding-left: 1rem; opacity: 0.8; margin-bottom: 0.6rem; }
-.block-preview pre { background: oklch(0% 0 0 / 8%); padding: 0.75rem 1rem; border-radius: 0.4rem; overflow-x: auto; margin-bottom: 0.6rem; }
-.block-preview pre code { background: none; padding: 0; }
+.block-preview h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+.block-preview h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 0.4rem;
+}
+
+.block-preview h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 0.4rem;
+}
+
+.block-preview h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.block-preview p {
+  margin-bottom: 0.6rem;
+}
+
+.block-preview ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.block-preview ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.block-preview li {
+  margin-bottom: 0.2rem;
+}
+
+.block-preview strong {
+  font-weight: 700;
+}
+
+.block-preview em {
+  font-style: italic;
+}
+
+.block-preview code {
+  font-family: monospace;
+  background: color-mix(in srgb, var(--ink-900) 8%, transparent);
+  padding: 0.1em 0.3em;
+  border-radius: 0.2em;
+}
+
+.block-preview blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--ink-900) 20%, transparent);
+  padding-left: 1rem;
+  opacity: 0.8;
+  margin-bottom: 0.6rem;
+}
+
+.block-preview pre {
+  background: color-mix(in srgb, var(--ink-900) 8%, transparent);
+  padding: 0.75rem 1rem;
+  border-radius: 0.4rem;
+  overflow-x: auto;
+  margin-bottom: 0.6rem;
+}
+
+.block-preview pre code {
+  background: none;
+  padding: 0;
+}
 
 /* Inline highlights */
 mark.highlight-active {
-  background-color: oklch(96% 0.08 85);
+  background-color: color-mix(in srgb, var(--brand-300) 40%, transparent);
   border-radius: 2px;
   padding: 0 1px;
   cursor: pointer;
 }
 
 mark.highlight-stale {
-  background-color: oklch(94% 0.03 50);
-  text-decoration: underline wavy oklch(65% 0.08 50);
+  background-color: color-mix(in srgb, var(--ink-300) 30%, transparent);
+  text-decoration: underline wavy var(--ink-400);
   cursor: pointer;
 }
 
@@ -173,13 +413,13 @@ mark.highlight-stale {
 
 /* Pasted subblock references */
 .subblock-ref {
-  color: oklch(65% 0.004 247);
+  color: var(--ink-500);
   text-decoration: none;
   cursor: pointer;
 }
 
 .subblock-ref:hover {
-  color: oklch(50% 0.008 247);
+  color: var(--ink-700);
 }
 
 .subblock-ref-icon {
