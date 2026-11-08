@@ -330,7 +330,7 @@ defmodule Deliberation.Web.ActivityLive do
     Regex.replace(
       ~r/<a href="sblk:\/\/(sblk_[^"]+)"[^>]*>(.*?)<\/a>/s,
       html,
-      ~s(<span class="subblock-ref" data-subblock-id="\\1" title="Pasted highlight reference">\\2<span class="subblock-ref-icon"> ↗</span></span>)
+      ~s(<a href="/subblocks/\\1" class="subblock-ref" title="View highlight">\\2<span class="subblock-ref-icon"> ↗</span></a>)
     )
   end
 end

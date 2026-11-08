@@ -27,6 +27,8 @@ defmodule WikiWeb.Router do
     scope "/", WikiWeb do
       pipe_through :browser
       live "/blocks", BlocksLive
+      live "/blocks/:id", BlockDetailLive
+      live "/subblocks/:id", SubBlockDetailLive
     end
 
     mount_extension_routes()

@@ -102,6 +102,32 @@ defmodule Deliberation do
   def name, do: "Deliberation"
 
   @impl Wiki.Block.Extension
+  def block_detail_sections(block) do
+    import Ecto.Query
+
+    block_kinds =
+      BlockKind
+      |> where([bk], bk.block_id == ^block.id)
+      |> preload(:group_activity)
+      |> Repo.all()
+
+    if block_kinds == [] do
+      []
+    else
+      items =
+        Enum.map(block_kinds, fn bk ->
+          %{
+            label: bk.group_activity.name,
+            href: "/ext/deliberation/activities/#{bk.group_activity_id}",
+            badge: bk.kind
+          }
+        end)
+
+      [%{title: "Activity Memberships", items: items}]
+    end
+  end
+
+  @impl Wiki.Block.Extension
   def home_path, do: "/ext/deliberation"
 
   @impl Wiki.Block.Extension

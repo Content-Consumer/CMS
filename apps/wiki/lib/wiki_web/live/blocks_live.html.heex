@@ -80,7 +80,9 @@
       <%!-- Preview mode --%>
       <div :if={@editing_block_id != block.id} class="card-body py-4 px-5">
         <div class="flex items-center justify-between mb-2">
-          <code class="text-xs opacity-40">{block.id}</code>
+          <.link href={"/blocks/#{block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
+            {block.id}
+          </.link>
           <div class="flex items-center gap-1">
             <button
               phx-click="edit_block"

@@ -154,10 +154,32 @@ mark.highlight-stale {
   cursor: pointer;
 }
 
+/* Collapsed block preview (subblock detail page) */
+.block-preview-collapsed {
+  max-height: 10rem;
+  overflow: hidden;
+}
+
+.block-preview-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3rem;
+  background: linear-gradient(transparent, var(--color-base-100));
+  pointer-events: none;
+}
+
 /* Pasted subblock references */
 .subblock-ref {
   color: oklch(65% 0.004 247);
-  cursor: default;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.subblock-ref:hover {
+  color: oklch(50% 0.008 247);
 }
 
 .subblock-ref-icon {
