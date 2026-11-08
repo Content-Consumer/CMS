@@ -171,7 +171,7 @@ defmodule Deliberation.Web.ActivityLive do
       <div class="mb-8">
         <h1 class="text-2xl font-bold">{@activity.name}</h1>
         <p class="text-sm opacity-60 mt-1">
-          <span class="badge badge-sm badge-ghost">{@activity.activity_type.name}</span>
+          <span class="badge badge-sm bg-ink-100 text-ink-600 border-0">{@activity.activity_type.name}</span>
           · {@activity.dimension.title}
         </p>
       </div>
@@ -183,7 +183,7 @@ defmodule Deliberation.Web.ActivityLive do
         >
           <div class="card-body py-4 px-5">
             <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <span class={"badge badge-sm #{if bk.kind == "argument", do: "badge-primary", else: "badge-secondary"}"}>
+              <span class={"badge badge-sm border-0 #{if bk.kind == "argument", do: "bg-brand-100 text-brand-700", else: "bg-accent-100 text-accent-700"}"}>
                 {bk.kind}
               </span>
               <.link href={"/blocks/#{bk.block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
@@ -275,7 +275,7 @@ defmodule Deliberation.Web.ActivityLive do
             <%!-- Existing relationships on statement blocks --%>
             <div :if={bk.kind == "statement" and @rel_map[bk.block.id] not in [nil, []]} class="mt-2 space-y-1">
               <div :for={rel <- (@rel_map[bk.block.id] || [])} class="flex items-center gap-2 text-xs">
-                <span class={"badge badge-xs #{if rel.type.name == "supports", do: "badge-success", else: "badge-error"}"}>
+                <span class={"badge badge-xs border-0 #{if rel.type.name == "supports", do: "bg-brand-100 text-brand-700", else: "bg-ink-200 text-ink-700"}"}>
                   {rel.type.label}
                 </span>
                 <span class="opacity-60 truncate flex-1">
