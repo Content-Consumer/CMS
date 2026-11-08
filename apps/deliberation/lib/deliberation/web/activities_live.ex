@@ -48,9 +48,6 @@ defmodule Deliberation.Web.ActivitiesLive do
           <p class="text-sm opacity-60 mt-1">Deliberation extension · Argument</p>
         </div>
         <div class="flex items-center gap-2">
-          <.link navigate="/ext/deliberation/voting-activities" class="btn btn-ghost btn-sm">
-            Voting Activities
-          </.link>
           <.link :if={@live_action == :index} navigate="/ext/deliberation/activities/new" class="btn btn-primary btn-sm">
             New Activity
           </.link>

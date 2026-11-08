@@ -26,8 +26,17 @@ defmodule Deliberation.Web.HomeLive do
           <.link navigate="/ext/deliberation/activities" class="card bg-base-100 border border-base-300 shadow-xs hover:border-base-content/20 transition-colors">
             <div class="card-body py-4 px-5 flex-row items-center justify-between">
               <div>
-                <p class="font-medium">Argument Activities</p>
+                <p class="font-medium">Arguments</p>
                 <p class="text-sm opacity-50 mt-0.5">Manage structured argument sessions</p>
+              </div>
+              <.icon name="hero-arrow-right" class="h-4 w-4 opacity-40" />
+            </div>
+          </.link>
+          <.link navigate="/ext/deliberation/voting-activities" class="card bg-base-100 border border-base-300 shadow-xs hover:border-base-content/20 transition-colors">
+            <div class="card-body py-4 px-5 flex-row items-center justify-between">
+              <div>
+                <p class="font-medium">Poll</p>
+                <p class="text-sm opacity-50 mt-0.5">Run votes on propositions with structured reasons</p>
               </div>
               <.icon name="hero-arrow-right" class="h-4 w-4 opacity-40" />
             </div>

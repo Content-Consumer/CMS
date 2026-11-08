@@ -196,7 +196,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="text-sm prose prose-sm max-w-none">
               {render_markdown(bk.block.block_content.content)}
             </div>
-            <div :if={(@upvote_field || @downvote_field) && @current_scope && @current_scope.user} class="flex items-center gap-2 mt-3 pt-3 border-t border-base-200">
+            <div :if={(@upvote_field || @downvote_field) && not is_nil(@current_scope && @current_scope.user)} class="flex items-center gap-2 mt-3 pt-3 border-t border-base-200">
               <button
                 :if={@upvote_field}
                 phx-click="toggle_vote"
@@ -221,7 +221,7 @@ defmodule Deliberation.Web.ActivityLive do
               </button>
             </div>
             <%!-- Add argument buttons for statement blocks --%>
-            <div :if={bk.kind == "statement" and @current_scope && @current_scope.user and (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
+            <div :if={bk.kind == "statement" and not is_nil(@current_scope && @current_scope.user) and (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
               <button
                 :if={@rel_types["supports"]}
                 phx-click="show_rel_picker"
@@ -281,7 +281,7 @@ defmodule Deliberation.Web.ActivityLive do
                 <span class="opacity-60 truncate flex-1">
                   {other_block_preview(rel, bk.block.id)}
                 </span>
-                <button :if={@current_scope && @current_scope.user} phx-click="delete_rel" phx-value-id={rel.id} class="btn btn-ghost btn-xs text-error">
+                <button :if={not is_nil(@current_scope && @current_scope.user)} phx-click="delete_rel" phx-value-id={rel.id} class="btn btn-ghost btn-xs text-error">
                   <.icon name="hero-x-mark" class="h-3 w-3" />
                 </button>
               </div>
