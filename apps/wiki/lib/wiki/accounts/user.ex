@@ -7,6 +7,7 @@ defmodule Wiki.Accounts.User do
 
   schema "users" do
     field :email, :string
+    field :username, :string
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
@@ -54,6 +55,46 @@ defmodule Wiki.Accounts.User do
   defp validate_email_changed(changeset) do
     if get_field(changeset, :email) && get_change(changeset, :email) == nil do
       add_error(changeset, :email, "did not change")
+    else
+      changeset
+    end
+  end
+
+  @doc """
+  A user changeset for registration — combines email and username validation.
+  """
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> email_changeset(attrs, opts)
+    |> username_changeset(attrs, opts)
+  end
+
+  @doc """
+  A user changeset for setting or changing the username.
+
+  ## Options
+
+    * `:validate_unique` - Set to false to skip uniqueness check (for live validation).
+      Defaults to `true`.
+  """
+  def username_changeset(user_or_changeset, attrs, opts \\ []) do
+    user_or_changeset
+    |> cast(attrs, [:username])
+    |> validate_username(opts)
+  end
+
+  defp validate_username(changeset, opts) do
+    changeset =
+      changeset
+      |> validate_length(:username, min: 3, max: 30)
+      |> validate_format(:username, ~r/^[a-z0-9][a-z0-9\-]*[a-z0-9]$/,
+        message: "only lowercase letters, numbers, and hyphens; must not start or end with a hyphen"
+      )
+
+    if Keyword.get(opts, :validate_unique, true) do
+      changeset
+      |> unsafe_validate_unique(:username, Wiki.Repo)
+      |> unique_constraint(:username)
     else
       changeset
     end

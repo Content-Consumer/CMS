@@ -73,6 +73,23 @@ defmodule WikiWeb.UserLive.Settings do
         <div class="divider my-0" />
 
         <div>
+          <p class="text-sm font-medium mb-3">Username</p>
+          <.form for={@username_form} id="username_form" phx-submit="update_username" phx-change="validate_username" class="space-y-3">
+            <.input
+              field={@username_form[:username]}
+              type="text"
+              label=""
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="e.g. swift-river-0042"
+            />
+            <.button variant="primary" phx-disable-with="Saving...">Save Username</.button>
+          </.form>
+        </div>
+
+        <div class="divider my-0" />
+
+        <div>
           <p class="text-sm font-medium mb-3">Theme</p>
           <Layouts.theme_toggle />
         </div>
@@ -99,12 +116,14 @@ defmodule WikiWeb.UserLive.Settings do
     user = socket.assigns.current_scope.user
     email_changeset = Accounts.change_user_email(user, %{}, validate_unique: false)
     password_changeset = Accounts.change_user_password(user, %{}, hash_password: false)
+    username_changeset = Accounts.change_user_username(user, %{}, validate_unique: false)
 
     socket =
       socket
       |> assign(:current_email, user.email)
       |> assign(:email_form, to_form(email_changeset))
       |> assign(:password_form, to_form(password_changeset))
+      |> assign(:username_form, to_form(username_changeset))
       |> assign(:trigger_submit, false)
 
     {:ok, socket}
@@ -154,6 +173,32 @@ defmodule WikiWeb.UserLive.Settings do
       |> to_form()
 
     {:noreply, assign(socket, password_form: password_form)}
+  end
+
+  def handle_event("validate_username", %{"user" => user_params}, socket) do
+    changeset =
+      socket.assigns.current_scope.user
+      |> Accounts.change_user_username(user_params, validate_unique: false)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, username_form: to_form(changeset))}
+  end
+
+  def handle_event("update_username", %{"user" => user_params}, socket) do
+    user = socket.assigns.current_scope.user
+    true = Accounts.sudo_mode?(user)
+
+    case Accounts.update_user_username(user, user_params) do
+      {:ok, updated_user} ->
+        changeset = Accounts.change_user_username(updated_user, %{}, validate_unique: false)
+        {:noreply,
+         socket
+         |> put_flash(:info, "Username updated successfully.")
+         |> assign(username_form: to_form(changeset))}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, username_form: to_form(changeset))}
+    end
   end
 
   def handle_event("update_password", params, socket) do
