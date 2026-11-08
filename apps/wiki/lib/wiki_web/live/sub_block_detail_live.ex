@@ -85,13 +85,17 @@ defmodule WikiWeb.SubBlockDetailLive do
       <div class="max-w-3xl mx-auto px-4 py-8">
         <div class="flex items-start justify-between mb-6">
           <div>
-            <div class="flex items-center gap-2 mb-1">
+            <div class="flex items-center gap-2 mb-1 flex-wrap">
               <code class="text-xs opacity-50">{@subblock.id}</code>
               <span :if={@is_stale} class="badge badge-xs badge-warning">stale</span>
+              <span :if={@subblock.created_by} class="text-xs opacity-40">
+                · Highlighted by {@subblock.created_by.email}
+              </span>
             </div>
             <p class="text-xs opacity-40">
-              Highlight from
+              From block
               <.link href={"/blocks/#{@block.id}"} class="underline opacity-80">{@block.id}</.link>
+              <span :if={@block.created_by}> · Created by {@block.created_by.email}</span>
             </p>
           </div>
         </div>

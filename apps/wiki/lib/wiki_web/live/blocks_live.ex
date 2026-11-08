@@ -47,7 +47,8 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def handle_event("save_block", %{"content" => content}, socket) do
-    case TextBlock.create_block(content) do
+    user_id = socket.assigns.current_scope && socket.assigns.current_scope.user.id
+    case TextBlock.create_block(content, user_id) do
       {:ok, block} ->
         new_blocks = [block | socket.assigns.blocks]
         {:noreply,
@@ -156,7 +157,8 @@ defmodule WikiWeb.BlocksLive do
     %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} = socket.assigns.text_selection
     kind = socket.assigns.argdown_kind
 
-    case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id) do
+    user_id = socket.assigns.current_scope && socket.assigns.current_scope.user.id
+    case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id, user_id) do
       {:ok, {new_block, _block_kind}} ->
         new_blocks = [new_block | socket.assigns.blocks]
         {:noreply,
@@ -180,7 +182,8 @@ defmodule WikiWeb.BlocksLive do
         {:noreply, socket}
 
       %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} ->
-        case Wiki.SubBlock.create_subblock(block_id, from_ix, to_ix, text) do
+        user_id = socket.assigns.current_scope && socket.assigns.current_scope.user.id
+        case Wiki.SubBlock.create_subblock(block_id, from_ix, to_ix, text, user_id) do
           {:ok, _subblock} ->
             {:noreply,
              socket

@@ -85,7 +85,12 @@ defmodule WikiWeb.BlockDetailLive do
         <div class="flex items-start justify-between mb-6">
           <div>
             <h1 :if={@title} class="text-2xl font-bold mb-1">{@title}</h1>
-            <code class="text-xs opacity-40">{@block.id}</code>
+            <div class="flex items-center gap-2 flex-wrap">
+              <code class="text-xs opacity-40">{@block.id}</code>
+              <span :if={@block.created_by} class="text-xs opacity-40">
+                · Created by {@block.created_by.email}
+              </span>
+            </div>
           </div>
           <.link href="/blocks" class="btn btn-ghost btn-sm gap-1">
             <.icon name="hero-pencil-square" class="h-4 w-4" /> Edit

@@ -3,12 +3,12 @@ defmodule Wiki.TextBlock do
   alias Wiki.Repo
   alias Wiki.TextBlock.{Block, BlockContent, BlockContentVersion}
 
-  def create_block(markdown) do
+  def create_block(markdown, user_id \\ nil) do
     Repo.transaction(fn ->
       with {:ok, content} <-
              Repo.insert(BlockContent.changeset(%BlockContent{}, %{content: markdown})),
            {:ok, block} <-
-             Repo.insert(Block.changeset(%Block{}, %{content_id: content.id})),
+             Repo.insert(Block.changeset(%Block{}, %{content_id: content.id, created_by_id: user_id})),
            {:ok, _version} <-
              Repo.insert(BlockContentVersion.changeset(%BlockContentVersion{}, %{
                block_id: block.id,
@@ -25,7 +25,7 @@ defmodule Wiki.TextBlock do
   def get_block(id) do
     Block
     |> Repo.get(id)
-    |> Repo.preload(:block_content)
+    |> Repo.preload([:block_content, :created_by])
   end
 
   def get_all_blocks do

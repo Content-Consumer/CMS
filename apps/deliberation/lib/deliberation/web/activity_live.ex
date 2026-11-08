@@ -13,6 +13,7 @@ defmodule Deliberation.Web.ActivityLive do
        upvote_field: nil,
        downvote_field: nil,
        vote_map: %{},
+       voter_map: %{},
        rel_picker: nil,
        rel_search_query: "",
        rel_map: %{},
@@ -33,6 +34,7 @@ defmodule Deliberation.Web.ActivityLive do
         downvote_field = Metadata.get_field_by_name_in_dimension("downvote", dim_id)
 
         vote_map = load_vote_map(block_kinds, upvote_field, downvote_field)
+        voter_map = load_voter_map(vote_map, upvote_field, downvote_field)
 
         supports_type = Wiki.BlockRelationship.get_type_by_name_in_dimension("supports", dim_id)
         attacks_type = Wiki.BlockRelationship.get_type_by_name_in_dimension("attacks", dim_id)
@@ -46,6 +48,7 @@ defmodule Deliberation.Web.ActivityLive do
           upvote_field: upvote_field,
           downvote_field: downvote_field,
           vote_map: vote_map,
+          voter_map: voter_map,
           rel_types: %{"supports" => supports_type, "attacks" => attacks_type},
           rel_map: rel_map,
           rel_picker: nil,
@@ -86,7 +89,8 @@ defmodule Deliberation.Web.ActivityLive do
       case result do
         {:ok, _} ->
           vote_map = load_vote_map(socket.assigns.block_kinds, socket.assigns.upvote_field, socket.assigns.downvote_field)
-          {:noreply, assign(socket, vote_map: vote_map)}
+          voter_map = load_voter_map(vote_map, socket.assigns.upvote_field, socket.assigns.downvote_field)
+          {:noreply, assign(socket, vote_map: vote_map, voter_map: voter_map)}
 
         _ ->
           {:noreply, put_flash(socket, :error, "Failed to register vote")}
@@ -156,11 +160,16 @@ defmodule Deliberation.Web.ActivityLive do
           class="card bg-base-100 border border-base-300 shadow-xs"
         >
           <div class="card-body py-4 px-5">
-            <div class="flex items-center gap-2 mb-2">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
               <span class={"badge badge-sm #{if bk.kind == "argument", do: "badge-primary", else: "badge-secondary"}"}>
                 {bk.kind}
               </span>
-              <code class="text-xs opacity-40">{bk.block.id}</code>
+              <.link href={"/blocks/#{bk.block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
+                {bk.block.id}
+              </.link>
+              <span :if={bk.created_by} class="text-xs opacity-40 ml-auto">
+                Added by {bk.created_by.email}
+              </span>
             </div>
             <div class="text-sm prose prose-sm max-w-none">
               {render_markdown(bk.block.block_content.content)}
@@ -171,6 +180,7 @@ defmodule Deliberation.Web.ActivityLive do
                 phx-click="toggle_vote"
                 phx-value-block-id={bk.block.id}
                 phx-value-field-id={@upvote_field.id}
+                title={voters_for(bk.block.id, @upvote_field, @voter_map) |> Enum.map(& &1.email) |> Enum.join(", ")}
                 class={"btn btn-sm rounded-full border gap-1 #{if voted?(bk.block.id, @upvote_field, @vote_map, @current_scope), do: "border-base-content font-semibold", else: "btn-ghost border-base-300"}"}
               >
                 <.icon name="hero-arrow-up" class="h-4 w-4 shrink-0" />
@@ -181,6 +191,7 @@ defmodule Deliberation.Web.ActivityLive do
                 phx-click="toggle_vote"
                 phx-value-block-id={bk.block.id}
                 phx-value-field-id={@downvote_field.id}
+                title={voters_for(bk.block.id, @downvote_field, @voter_map) |> Enum.map(& &1.email) |> Enum.join(", ")}
                 class={"btn btn-sm rounded-full border gap-1 #{if voted?(bk.block.id, @downvote_field, @vote_map, @current_scope), do: "border-base-content font-semibold", else: "btn-ghost border-base-300"}"}
               >
                 <.icon name="hero-arrow-down" class="h-4 w-4 shrink-0" />
@@ -296,6 +307,38 @@ defmodule Deliberation.Web.ActivityLive do
   defp vote_count_for(block_id, field, vote_map) do
     value = get_in(vote_map, [block_id, field.id]) || %{}
     Metadata.vote_count(value)
+  end
+
+  defp load_voter_map(vote_map, upvote_field, downvote_field) do
+    all_ids =
+      vote_map
+      |> Enum.flat_map(fn {_, fields} ->
+        fields
+        |> Map.values()
+        |> Enum.flat_map(&Metadata.voter_ids/1)
+      end)
+      |> Enum.uniq()
+
+    users = Wiki.Accounts.get_users_by_ids(all_ids)
+    user_by_id = Map.new(users, &{&1.id, &1})
+
+    field_ids =
+      [upvote_field && upvote_field.id, downvote_field && downvote_field.id]
+      |> Enum.reject(&is_nil/1)
+
+    Map.new(vote_map, fn {block_id, fields} ->
+      per_field =
+        Map.new(field_ids, fn fid ->
+          ids = Metadata.voter_ids(Map.get(fields, fid, %{}))
+          {fid, Enum.map(ids, &Map.get(user_by_id, &1)) |> Enum.reject(&is_nil/1)}
+        end)
+
+      {block_id, per_field}
+    end)
+  end
+
+  defp voters_for(block_id, field, voter_map) do
+    get_in(voter_map, [block_id, field.id]) || []
   end
 
   defp statement_blocks(block_kinds), do: Enum.filter(block_kinds, &(&1.kind == "statement"))

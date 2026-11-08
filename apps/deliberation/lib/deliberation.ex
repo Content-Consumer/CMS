@@ -41,17 +41,18 @@ defmodule Deliberation do
     ]
   end
 
-  def create_argdown_block(original_block_id, selected_text, from_ix, to_ix, kind, group_activity_id) do
+  def create_argdown_block(original_block_id, selected_text, from_ix, to_ix, kind, group_activity_id, user_id \\ nil) do
     Repo.transaction(fn ->
-      with {:ok, _sub_block} <- SubBlock.create_subblock(original_block_id, from_ix, to_ix),
-           {:ok, new_block} <- TextBlock.create_block(selected_text),
+      with {:ok, _sub_block} <- SubBlock.create_subblock(original_block_id, from_ix, to_ix, nil, user_id),
+           {:ok, new_block} <- TextBlock.create_block(selected_text, user_id),
            dim when not is_nil(dim) <- Dimension.get_dimension_by_title(@dimension_title),
            {:ok, _} <- Dimension.add_block_to_dimension(new_block.id, dim.id),
            {:ok, block_kind} <-
              Repo.insert(BlockKind.changeset(%BlockKind{}, %{
                block_id: new_block.id,
                group_activity_id: group_activity_id,
-               kind: kind
+               kind: kind,
+               created_by_id: user_id
              })) do
         {new_block, block_kind}
       else
@@ -66,7 +67,7 @@ defmodule Deliberation do
 
     BlockKind
     |> where([bk], bk.group_activity_id == ^activity_id)
-    |> preload([bk], block: :block_content)
+    |> preload([bk], [:created_by, block: :block_content])
     |> Repo.all()
   end
 

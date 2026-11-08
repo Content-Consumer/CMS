@@ -10,6 +10,12 @@ defmodule Wiki.Accounts do
 
   ## Database getters
 
+  def get_users_by_ids([]), do: []
+
+  def get_users_by_ids(ids) do
+    User |> where([u], u.id in ^ids) |> Repo.all()
+  end
+
   @doc """
   Gets a user by email.
 

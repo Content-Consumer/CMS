@@ -8,6 +8,7 @@ defmodule Deliberation.BlockKind do
   schema "deliberation_block_kinds" do
     belongs_to :block, Wiki.TextBlock.Block, foreign_key: :block_id
     belongs_to :group_activity, Wiki.Activity.GroupActivity, foreign_key: :group_activity_id
+    belongs_to :created_by, Wiki.Accounts.User, foreign_key: :created_by_id, type: :string
 
     field :kind, :string
 
@@ -16,7 +17,7 @@ defmodule Deliberation.BlockKind do
 
   def changeset(block_kind, attrs) do
     block_kind
-    |> cast(attrs, [:block_id, :group_activity_id, :kind])
+    |> cast(attrs, [:block_id, :group_activity_id, :kind, :created_by_id])
     |> validate_required([:block_id, :group_activity_id, :kind])
     |> validate_inclusion(:kind, ["argument", "statement"])
     |> unique_constraint(:block_id)

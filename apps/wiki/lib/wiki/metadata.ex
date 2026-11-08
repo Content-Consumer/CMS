@@ -171,6 +171,9 @@ defmodule Wiki.Metadata do
     Map.get(value, "user_ids", []) |> length()
   end
 
+  def voter_ids(value) when is_map(value), do: Map.get(value, "user_ids", [])
+  def voter_ids(_), do: []
+
   # Fetches the current raw value map for (block_id, field_id), or returns an
   # empty map if no record exists yet.
   defp get_current_value(block_id, field_id) do

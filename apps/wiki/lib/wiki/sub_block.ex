@@ -4,7 +4,7 @@ defmodule Wiki.SubBlock do
   alias Wiki.SubBlock.SubBlock
   alias Wiki.TextBlock.{Block, BlockContent}
 
-  def create_subblock(block_id, from_ix, to_ix, text \\ nil) do
+  def create_subblock(block_id, from_ix, to_ix, text \\ nil, user_id \\ nil) do
     version = Wiki.TextBlock.get_current_version(block_id)
 
     %SubBlock{}
@@ -13,7 +13,8 @@ defmodule Wiki.SubBlock do
       from_ix: from_ix,
       to_ix: to_ix,
       text: text,
-      block_content_version_id: version && version.id
+      block_content_version_id: version && version.id,
+      created_by_id: user_id
     })
     |> Repo.insert()
   end
@@ -24,7 +25,7 @@ defmodule Wiki.SubBlock do
 
   def get_subblock_detail(id) do
     Repo.get(SubBlock, id)
-    |> Repo.preload([:block_content_version, block: :block_content])
+    |> Repo.preload([:block_content_version, :created_by, block: [:block_content, :created_by]])
   end
 
   def find_blocks_referencing_subblock(subblock_id) do
