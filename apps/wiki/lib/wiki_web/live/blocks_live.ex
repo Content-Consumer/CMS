@@ -154,11 +154,24 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def handle_event("argdown_create", %{"activity_id" => activity_id}, socket) do
+    user = socket.assigns.current_scope && socket.assigns.current_scope.user
+    activity = Wiki.Activity.get_group_activity(activity_id)
+
+    cond do
+      is_nil(user) ->
+        {:noreply, put_flash(socket, :error, "You must be logged in")}
+
+      is_nil(activity) ->
+        {:noreply, put_flash(socket, :error, "Activity not found")}
+
+      not Wiki.Activity.user_in_dimension?(user.id, activity.dimension.id) ->
+        {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
+
+      true ->
     %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} = socket.assigns.text_selection
     kind = socket.assigns.argdown_kind
 
-    user_id = socket.assigns.current_scope && socket.assigns.current_scope.user.id
-    case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id, user_id) do
+    case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id, user.id) do
       {:ok, {new_block, _block_kind}} ->
         new_blocks = [new_block | socket.assigns.blocks]
         {:noreply,
@@ -172,6 +185,7 @@ defmodule WikiWeb.BlocksLive do
          socket
          |> assign(text_selection: nil, argdown_kind: nil)
          |> put_flash(:error, "Failed to create block: #{inspect(reason)}")}
+    end
     end
   end
 

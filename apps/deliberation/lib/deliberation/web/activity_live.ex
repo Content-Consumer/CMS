@@ -14,6 +14,7 @@ defmodule Deliberation.Web.ActivityLive do
        downvote_field: nil,
        vote_map: %{},
        voter_map: %{},
+       is_member: false,
        rel_picker: nil,
        rel_search_query: "",
        rel_map: %{},
@@ -42,6 +43,9 @@ defmodule Deliberation.Web.ActivityLive do
         block_ids = Enum.map(block_kinds, & &1.block.id)
         rel_map = if block_ids == [], do: %{}, else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
 
+        user = socket.assigns.current_scope && socket.assigns.current_scope.user
+        is_member = Wiki.Activity.user_in_dimension?(user && user.id, activity.dimension.id)
+
         assign(socket,
           activity: activity,
           block_kinds: block_kinds,
@@ -49,6 +53,7 @@ defmodule Deliberation.Web.ActivityLive do
           downvote_field: downvote_field,
           vote_map: vote_map,
           voter_map: voter_map,
+          is_member: is_member,
           rel_types: %{"supports" => supports_type, "attacks" => attacks_type},
           rel_map: rel_map,
           rel_picker: nil,
@@ -72,9 +77,14 @@ defmodule Deliberation.Web.ActivityLive do
   def handle_event("toggle_vote", %{"block-id" => block_id, "field-id" => field_id}, socket) do
     user = socket.assigns.current_scope && socket.assigns.current_scope.user
 
-    if is_nil(user) do
-      {:noreply, put_flash(socket, :error, "You must be logged in to vote")}
-    else
+    cond do
+      is_nil(user) ->
+        {:noreply, put_flash(socket, :error, "You must be logged in to vote")}
+
+      not socket.assigns.is_member ->
+        {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
+
+      true ->
       current_value = get_in(socket.assigns.vote_map, [block_id, field_id]) || %{}
 
       result =
@@ -100,7 +110,11 @@ defmodule Deliberation.Web.ActivityLive do
 
   @impl true
   def handle_event("show_rel_picker", %{"block-id" => id, "type" => type_name}, socket) do
-    {:noreply, assign(socket, rel_picker: {id, type_name}, rel_search_query: "")}
+    if socket.assigns.is_member do
+      {:noreply, assign(socket, rel_picker: {id, type_name}, rel_search_query: "")}
+    else
+      {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
+    end
   end
 
   @impl true
@@ -115,28 +129,36 @@ defmodule Deliberation.Web.ActivityLive do
 
   @impl true
   def handle_event("create_rel", %{"argument-id" => argument_id}, socket) do
-    {statement_id, type_name} = socket.assigns.rel_picker
-    type = socket.assigns.rel_types[type_name]
+    if not socket.assigns.is_member do
+      {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
+    else
+      {statement_id, type_name} = socket.assigns.rel_picker
+      type = socket.assigns.rel_types[type_name]
 
-    case Wiki.BlockRelationship.create_relation(argument_id, statement_id, type.id) do
-      {:ok, _} ->
-        block_ids = Enum.map(socket.assigns.block_kinds, & &1.block.id)
-        rel_map = if block_ids == [], do: %{}, else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
-        {:noreply, assign(socket, rel_map: rel_map, rel_picker: nil, rel_search_query: "")}
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to add relation")}
+      case Wiki.BlockRelationship.create_relation(argument_id, statement_id, type.id) do
+        {:ok, _} ->
+          block_ids = Enum.map(socket.assigns.block_kinds, & &1.block.id)
+          rel_map = if block_ids == [], do: %{}, else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
+          {:noreply, assign(socket, rel_map: rel_map, rel_picker: nil, rel_search_query: "")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to add relation")}
+      end
     end
   end
 
   @impl true
   def handle_event("delete_rel", %{"id" => id}, socket) do
-    case Wiki.BlockRelationship.delete_relation(id) do
-      {:ok, _} ->
-        block_ids = Enum.map(socket.assigns.block_kinds, & &1.block.id)
-        rel_map = if block_ids == [], do: %{}, else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
-        {:noreply, assign(socket, rel_map: rel_map)}
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to remove relation")}
+    if not socket.assigns.is_member do
+      {:noreply, put_flash(socket, :error, "You are not a member of this dimension")}
+    else
+      case Wiki.BlockRelationship.delete_relation(id) do
+        {:ok, _} ->
+          block_ids = Enum.map(socket.assigns.block_kinds, & &1.block.id)
+          rel_map = if block_ids == [], do: %{}, else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
+          {:noreply, assign(socket, rel_map: rel_map)}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to remove relation")}
+      end
     end
   end
 
@@ -174,7 +196,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="text-sm prose prose-sm max-w-none">
               {render_markdown(bk.block.block_content.content)}
             </div>
-            <div :if={@upvote_field || @downvote_field} class="flex items-center gap-2 mt-3 pt-3 border-t border-base-200">
+            <div :if={(@upvote_field || @downvote_field) && @is_member} class="flex items-center gap-2 mt-3 pt-3 border-t border-base-200">
               <button
                 :if={@upvote_field}
                 phx-click="toggle_vote"
@@ -199,7 +221,7 @@ defmodule Deliberation.Web.ActivityLive do
               </button>
             </div>
             <%!-- Add argument buttons for statement blocks --%>
-            <div :if={bk.kind == "statement" and (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
+            <div :if={bk.kind == "statement" and @is_member and (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
               <button
                 :if={@rel_types["supports"]}
                 phx-click="show_rel_picker"
@@ -259,7 +281,7 @@ defmodule Deliberation.Web.ActivityLive do
                 <span class="opacity-60 truncate flex-1">
                   {other_block_preview(rel, bk.block.id)}
                 </span>
-                <button phx-click="delete_rel" phx-value-id={rel.id} class="btn btn-ghost btn-xs text-error">
+                <button :if={@is_member} phx-click="delete_rel" phx-value-id={rel.id} class="btn btn-ghost btn-xs text-error">
                   <.icon name="hero-x-mark" class="h-3 w-3" />
                 </button>
               </div>

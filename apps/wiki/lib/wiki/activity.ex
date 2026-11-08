@@ -74,4 +74,13 @@ defmodule Wiki.Activity do
     |> preload(:user)
     |> Repo.one()
   end
+
+  def user_in_dimension?(user_id, dimension_id) when is_binary(user_id) and is_binary(dimension_id) do
+    Repo.exists?(
+      from u in UserActivity,
+        where: u.user_id == ^user_id and u.dimension_id == ^dimension_id
+    )
+  end
+
+  def user_in_dimension?(_, _), do: false
 end
