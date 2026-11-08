@@ -5,7 +5,8 @@ defmodule Wiki.Metadata do
   alias Wiki.Dimension.BlockDimension
 
   @wiki_defaults [
-    %{name: "title", label: "Title", type: "text"}
+    %{name: "title", label: "Title", type: "text"},
+    %{name: "url", label: "Source URL", type: "text"}
   ]
 
   @doc """

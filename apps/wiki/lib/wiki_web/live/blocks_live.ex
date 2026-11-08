@@ -5,6 +5,7 @@ defmodule WikiWeb.BlocksLive do
   @impl true
   def mount(_params, _session, socket) do
     title_field = Wiki.Metadata.get_field_by_name("title")
+    url_field = Wiki.Metadata.get_field_by_name("url")
     blocks = TextBlock.get_all_blocks()
 
     {:ok,
@@ -18,13 +19,18 @@ defmodule WikiWeb.BlocksLive do
        argdown_activities: [],
        breadcrumbs: [%{label: "Blocks", path: nil}],
        title_field: title_field,
+       url_field: url_field,
        editing_title_id: nil,
        ref_type: nil,
        editing_ref_id: nil,
        ref_search_query: "",
        ref_suggestions: [],
        rel_map: %{},
-       subblock_map: %{}
+       subblock_map: %{},
+       new_block_type: nil,
+       webpage_url: "",
+       webpage_fetching: false,
+       webpage_draft: nil
      )
      |> put_blocks(blocks)}
   end
@@ -37,12 +43,69 @@ defmodule WikiWeb.BlocksLive do
 
   @impl true
   def handle_event("show_editor", _, socket) do
-    {:noreply, assign(socket, show_editor: true, editing_block_id: nil)}
+    {:noreply, assign(socket, show_editor: true, editing_block_id: nil, new_block_type: nil)}
   end
 
   @impl true
   def handle_event("hide_editor", _, socket) do
     {:noreply, assign(socket, show_editor: false)}
+  end
+
+  @impl true
+  def handle_event("show_webpage_editor", _, socket) do
+    {:noreply, assign(socket, new_block_type: :webpage, show_editor: false, webpage_url: "", webpage_draft: nil, webpage_fetching: false)}
+  end
+
+  @impl true
+  def handle_event("cancel_webpage", _, socket) do
+    {:noreply, assign(socket, new_block_type: nil, webpage_url: "", webpage_draft: nil, webpage_fetching: false)}
+  end
+
+  @impl true
+  def handle_event("fetch_webpage", %{"url" => url}, socket) do
+    url = String.trim(url)
+    pid = self()
+    Task.start(fn -> send(pid, {:webpage_fetched, Wiki.WebPage.fetch_and_extract(url)}) end)
+    {:noreply, assign(socket, webpage_fetching: true, webpage_url: url)}
+  end
+
+  @impl true
+  def handle_info({:webpage_fetched, {:ok, draft}}, socket) do
+    {:noreply, assign(socket, webpage_draft: draft, webpage_fetching: false)}
+  end
+
+  @impl true
+  def handle_info({:webpage_fetched, {:error, reason}}, socket) do
+    {:noreply, socket |> assign(webpage_fetching: false) |> put_flash(:error, "Import failed: #{reason}")}
+  end
+
+  @impl true
+  def handle_event("save_webpage_block", %{"content" => content, "url" => url, "title" => title}, socket) do
+    user_id = socket.assigns.current_scope && socket.assigns.current_scope.user && socket.assigns.current_scope.user.id
+
+    case TextBlock.create_block(content, user_id) do
+      {:ok, block} ->
+        title_field = socket.assigns.title_field
+        url_field = socket.assigns.url_field
+
+        if title_field && String.trim(title) != "" do
+          Wiki.Metadata.set_value(block.id, title_field.id, %{"value" => String.trim(title)})
+        end
+
+        if url_field && String.trim(url) != "" do
+          Wiki.Metadata.set_value(block.id, url_field.id, %{"value" => String.trim(url)})
+        end
+
+        new_blocks = [block | socket.assigns.blocks]
+        {:noreply,
+         socket
+         |> put_blocks(new_blocks)
+         |> assign(new_block_type: nil, webpage_draft: nil, webpage_url: "")
+         |> put_flash(:info, "Web page imported")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to save block")}
+    end
   end
 
   @impl true
@@ -304,13 +367,37 @@ defmodule WikiWeb.BlocksLive do
 
   defp put_blocks(socket, blocks) do
     title_field = socket.assigns[:title_field]
-    title_map =
-      if title_field && blocks != [] do
+    url_field = socket.assigns[:url_field]
+
+    field_ids =
+      [title_field && title_field.id, url_field && url_field.id]
+      |> Enum.reject(&is_nil/1)
+
+    raw_meta =
+      if field_ids != [] && blocks != [] do
         block_ids = Enum.map(blocks, & &1.id)
-        raw = Wiki.Metadata.get_values_for_blocks(block_ids, [title_field.id])
+        Wiki.Metadata.get_values_for_blocks(block_ids, field_ids)
+      else
+        %{}
+      end
+
+    block_ids = Enum.map(blocks, & &1.id)
+
+    title_map =
+      if title_field do
         Map.new(block_ids, fn id ->
-          title = get_in(raw, [id, title_field.id, "value"])
-          {id, if(title == "" or is_nil(title), do: nil, else: title)}
+          val = get_in(raw_meta, [id, title_field.id, "value"])
+          {id, if(val == "" or is_nil(val), do: nil, else: val)}
+        end)
+      else
+        %{}
+      end
+
+    url_map =
+      if url_field do
+        Map.new(block_ids, fn id ->
+          val = get_in(raw_meta, [id, url_field.id, "value"])
+          {id, if(val == "" or is_nil(val), do: nil, else: val)}
         end)
       else
         %{}
@@ -349,7 +436,7 @@ defmodule WikiWeb.BlocksLive do
         %{}
       end
 
-    assign(socket, blocks: blocks, title_map: title_map, rel_map: rel_map, subblock_map: subblock_map)
+    assign(socket, blocks: blocks, title_map: title_map, url_map: url_map, rel_map: rel_map, subblock_map: subblock_map)
   end
 
   defp owns_block?(socket, block_id) do

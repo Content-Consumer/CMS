@@ -72,7 +72,8 @@ defmodule Wiki.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:uxid, "~> 2.10"},
-      {:earmark, "~> 1.4"}
+      {:earmark, "~> 1.4"},
+      {:floki, "~> 0.37"}
     ]
   end
 

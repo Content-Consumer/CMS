@@ -2,9 +2,26 @@
 <div class="max-w-3xl mx-auto px-4 py-8">
   <div class="flex items-center justify-between mb-8">
     <h1 class="text-2xl font-bold">Text Blocks</h1>
-    <button :if={!@show_editor} phx-click="show_editor" class="btn btn-primary btn-sm">
-      New Block
-    </button>
+    <div :if={!@show_editor && @new_block_type == nil} class="dropdown dropdown-end">
+      <button tabindex="0" class="btn btn-primary btn-sm">
+        New Block
+        <.icon name="hero-chevron-down" class="h-3 w-3 ml-1" />
+      </button>
+      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-1 shadow-md border border-base-300 text-sm mt-1">
+        <li>
+          <button phx-click="show_editor" class="flex items-center gap-2">
+            <.icon name="hero-document-text" class="h-4 w-4 shrink-0" />
+            Text Block
+          </button>
+        </li>
+        <li>
+          <button phx-click="show_webpage_editor" class="flex items-center gap-2">
+            <.icon name="hero-globe-alt" class="h-4 w-4 shrink-0" />
+            Web Page
+          </button>
+        </li>
+      </ul>
+    </div>
   </div>
 
   <form phx-change="search" phx-submit="search" class="mb-6">
@@ -17,6 +34,75 @@
       class="input input-bordered w-full"
     />
   </form>
+
+  <%!-- Web Page import editor --%>
+  <div :if={@new_block_type == :webpage} class="card bg-base-200 mb-8">
+    <div class="card-body">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="card-title text-base">Import Web Page</h2>
+        <button phx-click="cancel_webpage" class="btn btn-ghost btn-xs">Cancel</button>
+      </div>
+
+      <%!-- Step 1: URL input --%>
+      <div :if={is_nil(@webpage_draft)}>
+        <form phx-submit="fetch_webpage" class="flex gap-2 items-end">
+          <div class="form-control flex-1">
+            <label class="label pb-1"><span class="label-text text-xs">Article URL</span></label>
+            <input
+              type="url"
+              name="url"
+              value={@webpage_url}
+              placeholder="https://example.com/article"
+              class="input input-bordered input-sm w-full"
+              autofocus
+              required
+              disabled={@webpage_fetching}
+            />
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" disabled={@webpage_fetching}>
+            <span :if={@webpage_fetching} class="loading loading-spinner loading-xs"></span>
+            {if @webpage_fetching, do: "Importing…", else: "Import"}
+          </button>
+        </form>
+        <p :if={not @webpage_fetching} class="text-xs opacity-50 mt-2">We'll extract the article text and convert it to markdown.</p>
+        <p :if={@webpage_fetching} class="text-xs opacity-50 mt-2">Fetching and extracting article content…</p>
+      </div>
+
+      <%!-- Step 2: Edit and save --%>
+      <div :if={not is_nil(@webpage_draft)}>
+        <form phx-submit="save_webpage_block">
+          <input type="hidden" name="url" value={@webpage_draft.url} />
+          <div class="form-control mb-3">
+            <label class="label pb-1"><span class="label-text text-xs">Title</span></label>
+            <input
+              type="text"
+              name="title"
+              value={@webpage_draft.title}
+              placeholder="Title"
+              class="input input-bordered input-sm w-full"
+            />
+          </div>
+          <div class="form-control mb-3">
+            <label class="label pb-1"><span class="label-text text-xs">Content (markdown)</span></label>
+            <div id="tiptap-wrapper-webpage" phx-update="ignore">
+              <div
+                id="tiptap-editor-webpage"
+                phx-hook="TiptapEditor"
+                data-input-id="block-content-webpage"
+                class="tiptap-editor bg-base-100 rounded-box border border-base-300 p-4 min-h-64 cursor-text text-sm"
+              >
+              </div>
+            </div>
+            <input type="hidden" name="content" id="block-content-webpage" value={@webpage_draft.content} />
+          </div>
+          <div class="card-actions justify-end">
+            <button type="button" phx-click="cancel_webpage" class="btn btn-ghost btn-sm">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save Block</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <div :if={@show_editor} class="card bg-base-200 mb-8">
     <div class="card-body">
@@ -80,9 +166,22 @@
       <%!-- Preview mode --%>
       <div :if={@editing_block_id != block.id} class="card-body py-4 px-5">
         <div class="flex items-center justify-between mb-2">
-          <.link href={"/blocks/#{block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
-            {block.id}
-          </.link>
+          <div class="flex items-center gap-2 flex-wrap">
+            <.link href={"/blocks/#{block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
+              {block.id}
+            </.link>
+            <a
+              :if={@url_map[block.id]}
+              href={@url_map[block.id]}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-xs opacity-50 hover:opacity-80 flex items-center gap-1 max-w-48 truncate"
+              title={@url_map[block.id]}
+            >
+              <.icon name="hero-link" class="h-3 w-3 shrink-0" />
+              {URI.parse(@url_map[block.id]).host || @url_map[block.id]}
+            </a>
+          </div>
           <div class="flex items-center gap-1">
             <button
               :if={@current_scope && @current_scope.user && @current_scope.user.id == block.created_by_id}
