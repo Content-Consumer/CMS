@@ -256,6 +256,22 @@ defmodule Deliberation.Web.ActivityLive do
     end
   end
 
+  @impl true
+  def handle_event("text_selected", _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_info({:block_deleted, _id}, socket) do
+    {:noreply, load_activity_blocks(socket, socket.assigns.activity.id)}
+  end
+
+  @impl true
+  def handle_info({:block_updated, _id}, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_info({:put_flash, level, msg}, socket) do
+    {:noreply, put_flash(socket, level, msg)}
+  end
+
   # ── Opinion events ───────────────────────────────────────────────────────────
 
   @impl true
@@ -615,22 +631,14 @@ defmodule Deliberation.Web.ActivityLive do
         </div>
 
         <div class="space-y-3">
-          <div
+          <.live_component
             :for={bk <- Enum.filter(@filtered_block_kinds, &(&1.kind == "statement"))}
-            class="card bg-base-100 border border-base-300 shadow-xs"
+            module={WikiWeb.BlockCardLive}
+            id={bk.block.id}
+            block={bk.block}
+            current_scope={@current_scope}
           >
-            <div class="card-body py-4 px-5">
-              <div class="flex items-center gap-2 mb-2 flex-wrap">
-                <.link href={"/blocks/#{bk.block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
-                  {bk.block.id}
-                </.link>
-                <span :if={bk.created_by} class="text-xs opacity-40 ml-auto">
-                  {bk.created_by.email}
-                </span>
-              </div>
-              <div class="text-sm prose prose-sm max-w-none">
-                {render_markdown(bk.block.block_content.content)}
-              </div>
+            <:extra>
               <div :if={(@upvote_field || @downvote_field) && not is_nil(@current_scope && @current_scope.user)} class="flex items-center gap-2 mt-3 pt-3 border-t border-base-200">
                 <button
                   :if={@upvote_field}
@@ -705,8 +713,8 @@ defmodule Deliberation.Web.ActivityLive do
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+            </:extra>
+          </.live_component>
 
           <div :if={Enum.filter(@filtered_block_kinds, &(&1.kind == "statement")) == [] && !@opinion_add_open} class="text-center py-16 text-base-content/40 text-sm">
             No opinions yet.

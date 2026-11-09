@@ -87,8 +87,8 @@ defmodule WikiWeb.BlockDetailLive do
             <h1 :if={@title} class="text-2xl font-bold mb-1">{@title}</h1>
             <div class="flex items-center gap-2 flex-wrap">
               <code class="text-xs opacity-40">{@block.id}</code>
-              <span :if={@block.created_by} class="text-xs opacity-40">
-                · Created by {@block.created_by.email}
+              <span :if={@block.created_by && @block.created_by.username} class="text-xs opacity-40">
+                · @{@block.created_by.username}
               </span>
             </div>
           </div>
