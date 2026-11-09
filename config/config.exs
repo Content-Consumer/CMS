@@ -44,7 +44,7 @@ config :wiki,
       {"/argument/:activity_id", Deliberation.Web.ActivityLive, :show},
       {"/argument/:activity_id/graph", Deliberation.Web.ActivityLive, :graph},
       {"/argument/:activity_id/node/:block_id", Deliberation.Web.ActivityLive, :node},
-      {"/argument/:activity_id/sources", Deliberation.Web.ActivityLive, :sources},
+      {"/argument/:activity_id/arguments", Deliberation.Web.ActivityLive, :sources},
       {"/poll", Deliberation.Web.VotingActivitiesLive, :index},
       {"/poll/new", Deliberation.Web.VotingActivitiesLive, :new},
       {"/poll/:activity_id", Deliberation.Web.VotingActivityLive, :show}

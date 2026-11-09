@@ -123,7 +123,7 @@ defmodule Deliberation.Web.ActivityLive do
           page_title:
             case live_action do
               :graph -> "#{activity.name} · Graph"
-              :sources -> "#{activity.name} · Sources"
+              :sources -> "#{activity.name} · Arguments"
               _ -> activity.name
             end
         )
@@ -410,21 +410,20 @@ defmodule Deliberation.Web.ActivityLive do
             </.link>
             <.link
               role="tab"
+              navigate={"/ext/deliberation/argument/#{@activity.id}/arguments"}
+              class={"tab #{if @live_action == :sources, do: "tab-active"}"}
+            >
+              Arguments
+            </.link>
+            <.link
+              role="tab"
               navigate={"/ext/deliberation/argument/#{@activity.id}/graph"}
               class={"tab #{if @live_action == :graph, do: "tab-active"}"}
             >
               Graph
             </.link>
-            <.link
-              role="tab"
-              navigate={"/ext/deliberation/argument/#{@activity.id}/sources"}
-              class={"tab #{if @live_action == :sources, do: "tab-active"}"}
-            >
-              Sources
-              <span :if={@sources != []} class="badge badge-sm ml-1">{length(@sources)}</span>
-            </.link>
           </div>
-          <form :if={@live_action != :sources} phx-change="search_activity" phx-submit="search_activity" class="flex-1">
+          <form phx-change="search_activity" phx-submit="search_activity" class="flex-1">
             <input
               type="text"
               name="query"
@@ -435,10 +434,10 @@ defmodule Deliberation.Web.ActivityLive do
             />
           </form>
         </div>
-        <p :if={@live_action != :sources && @search_query != "" && @filtered_block_kinds == []} class="text-sm opacity-50 py-4 text-center">
+        <p :if={@search_query != "" && @filtered_block_kinds == []} class="text-sm opacity-50 py-4 text-center">
           No blocks match "<em>{@search_query}</em>".
         </p>
-        <p :if={@live_action != :sources && @search_query != "" && @filtered_block_kinds != []} class="text-xs opacity-40 mb-4">
+        <p :if={@search_query != "" && @filtered_block_kinds != []} class="text-xs opacity-40 mb-4">
           {length(@filtered_block_kinds)} of {length(@block_kinds)} blocks shown
         </p>
       </div>
@@ -723,104 +722,20 @@ defmodule Deliberation.Web.ActivityLive do
 
       </div>
 
-      <%!-- Sources view (:sources) --%>
+      <%!-- Arguments view (:sources) --%>
       <div :if={@live_action == :sources}>
-        <div class="flex items-center justify-between mb-4">
-          <p class="text-sm opacity-50">Blocks in this pool can be used as opinions and arguments.</p>
-          <div :if={is_nil(@source_add_mode)} class="flex gap-2">
-            <button phx-click="set_source_add_mode" phx-value-mode="search" class="btn btn-sm btn-ghost gap-1">
-              <.icon name="hero-magnifying-glass" class="h-4 w-4" /> Add existing
-            </button>
-            <button phx-click="set_source_add_mode" phx-value-mode="text" class="btn btn-sm btn-primary gap-1">
-              <.icon name="hero-plus" class="h-4 w-4" /> New text block
-            </button>
-          </div>
+        <% arguments = Enum.filter(@block_kinds, &(&1.kind == "argument")) %>
+        <div :if={arguments == []} class="text-center py-16 text-base-content/40 text-sm">
+          No arguments added yet.
         </div>
-
-        <%!-- Add existing block panel --%>
-        <div :if={@source_add_mode == "search"} class="card bg-base-100 border border-base-300 mb-4">
-          <div class="card-body py-4 px-5">
-            <h3 class="font-medium text-sm mb-3">Search existing blocks</h3>
-            <form phx-change="search_source_blocks" phx-submit="search_source_blocks" class="mb-3">
-              <input
-                type="text"
-                name="query"
-                value={@source_search_query}
-                placeholder="Search blocks by content…"
-                phx-debounce="200"
-                class="input input-bordered input-sm w-full"
-                autofocus
-              />
-            </form>
-            <div :if={@source_search_results != []} class="space-y-1 max-h-64 overflow-y-auto">
-              <button
-                :for={block <- @source_search_results}
-                phx-click="add_existing_source"
-                phx-value-block-id={block.id}
-                class="w-full text-left btn btn-ghost btn-sm h-auto py-2 px-3 whitespace-normal"
-              >
-                <span class="text-xs opacity-50 font-mono mr-2">{String.slice(block.id, 0, 8)}</span>
-                {String.slice(block.block_content.content, 0, 120)}
-              </button>
-            </div>
-            <p :if={@source_search_query != "" && @source_search_results == []} class="text-sm opacity-50 py-2">No blocks found.</p>
-            <div class="flex justify-end mt-3">
-              <button phx-click="cancel_source_add" class="btn btn-ghost btn-sm">Cancel</button>
-            </div>
-          </div>
-        </div>
-
-        <%!-- New text block panel --%>
-        <div :if={@source_add_mode == "text"} class="card bg-base-100 border border-base-300 mb-4">
-          <div class="card-body py-4 px-5">
-            <h3 class="font-medium text-sm mb-3">New text block</h3>
-            <form phx-submit="add_source_text">
-              <textarea
-                name="content"
-                placeholder="Enter block content…"
-                class="textarea textarea-bordered w-full text-sm"
-                rows="4"
-                autofocus
-              ></textarea>
-              <div class="flex justify-end gap-2 mt-3">
-                <button type="button" phx-click="cancel_source_add" class="btn btn-ghost btn-sm">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-sm">Add source</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <%!-- Source list --%>
-        <div :if={@sources == [] && is_nil(@source_add_mode)} class="text-center py-16 text-base-content/40 text-sm">
-          No sources added yet. Add blocks to build the source pool.
-        </div>
-        <div class="space-y-2">
-          <div :for={src <- @sources} class="card bg-base-100 border border-base-300">
-            <div class="card-body py-3 px-4">
-              <div :if={@source_remove_warning == src.block_id} class="mb-3 p-3 bg-warning/10 border border-warning rounded-lg text-sm">
-                <p class="font-medium text-warning mb-1">Cannot remove — block is in use</p>
-                <p class="opacity-70 text-xs">This block is used as an argument in this activity. Remove that argument first, then try again.</p>
-                <button phx-click="dismiss_source_warning" class="btn btn-ghost btn-xs mt-2">Dismiss</button>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="flex-1 min-w-0">
-                  <.link href={"/blocks/#{src.block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline block mb-1">
-                    {src.block.id}
-                  </.link>
-                  <p class="text-sm">{String.slice(src.block.block_content.content, 0, 200)}</p>
-                </div>
-                <button
-                  :if={not is_nil(@current_scope && @current_scope.user)}
-                  phx-click="remove_source"
-                  phx-value-block-id={src.block_id}
-                  class="btn btn-ghost btn-xs text-error shrink-0"
-                  title="Remove source"
-                >
-                  <.icon name="hero-trash" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+        <div class="space-y-3">
+          <.live_component
+            :for={bk <- arguments}
+            module={WikiWeb.BlockCardLive}
+            id={bk.block.id}
+            block={bk.block}
+            current_scope={@current_scope}
+          />
         </div>
       </div>
 
