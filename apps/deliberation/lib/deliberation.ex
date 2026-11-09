@@ -170,6 +170,14 @@ defmodule Deliberation do
     end
   end
 
+  def load_all_vote_reasons(block_ids, voting_activity_id) do
+    BlockVoteReason
+    |> where([r], r.block_id in ^block_ids and r.voting_activity_id == ^voting_activity_id)
+    |> preload(reason_block: :block_content)
+    |> Repo.all()
+    |> Map.new(&{{&1.block_id, &1.user_id}, &1})
+  end
+
   def load_vote_reasons(block_ids, voting_activity_id, user_id) do
     BlockVoteReason
     |> where([r], r.block_id in ^block_ids and r.voting_activity_id == ^voting_activity_id and r.user_id == ^user_id)

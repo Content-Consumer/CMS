@@ -17,6 +17,7 @@ defmodule Deliberation.Web.VotingActivityLive do
        vote_map: %{},
        voter_map: %{},
        reason_map: %{},
+       all_reasons_map: %{},
        argument_blocks: [],
        reason_picker_block_id: nil,
        reason_search_query: "",
@@ -48,6 +49,7 @@ defmodule Deliberation.Web.VotingActivityLive do
         user_id = socket.assigns.current_scope && socket.assigns.current_scope.user && socket.assigns.current_scope.user.id
         block_ids = Enum.map(poll_items, & &1.block.id)
         reason_map = if va_id && user_id && block_ids != [], do: Deliberation.load_vote_reasons(block_ids, va_id, user_id), else: %{}
+        all_reasons_map = if va_id && block_ids != [], do: Deliberation.load_all_vote_reasons(block_ids, va_id), else: %{}
 
         scope =
           socket.assigns.current_scope
@@ -64,6 +66,7 @@ defmodule Deliberation.Web.VotingActivityLive do
           vote_map: vote_map,
           voter_map: voter_map,
           reason_map: reason_map,
+          all_reasons_map: all_reasons_map,
           argument_blocks: argument_blocks,
           page_title: activity.name,
           breadcrumbs: [
@@ -180,7 +183,8 @@ defmodule Deliberation.Web.VotingActivityLive do
           {:ok, _} ->
             block_ids = Enum.map(socket.assigns.poll_items, & &1.block.id)
             reason_map = Deliberation.load_vote_reasons(block_ids, va_id, scope.user.id)
-            {:noreply, assign(socket, reason_map: reason_map, reason_picker_block_id: nil, reason_search_query: "")}
+            all_reasons_map = Deliberation.load_all_vote_reasons(block_ids, va_id)
+            {:noreply, assign(socket, reason_map: reason_map, all_reasons_map: all_reasons_map, reason_picker_block_id: nil, reason_search_query: "")}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "Failed to save reason")}
@@ -197,7 +201,8 @@ defmodule Deliberation.Web.VotingActivityLive do
       Deliberation.clear_vote_reason(block_id, va_id, scope.user.id)
       block_ids = Enum.map(socket.assigns.poll_items, & &1.block.id)
       reason_map = Deliberation.load_vote_reasons(block_ids, va_id, scope.user.id)
-      {:noreply, assign(socket, reason_map: reason_map)}
+      all_reasons_map = Deliberation.load_all_vote_reasons(block_ids, va_id)
+      {:noreply, assign(socket, reason_map: reason_map, all_reasons_map: all_reasons_map)}
     else
       {:noreply, socket}
     end
@@ -484,8 +489,42 @@ defmodule Deliberation.Web.VotingActivityLive do
       </div>
 
       <%!-- Results tab --%>
-      <div :if={@tab == "results"} class="text-center py-16 text-base-content/40">
-        Results coming soon.
+      <div :if={@tab == "results"}>
+        <div :if={@poll_items == []} class="text-center py-16 text-base-content/40">
+          No poll questions yet.
+        </div>
+        <div class="space-y-6">
+          <div :for={bk <- @poll_items} class="card bg-base-100 border border-base-300 shadow-xs">
+            <div class="card-body py-4 px-5">
+              <div class="text-sm font-medium mb-4">
+                {render_markdown(bk.block.block_content.content)}
+              </div>
+              <% agree_voters = voters_for(bk.block.id, @upvote_field, @voter_map) %>
+              <% disagree_voters = voters_for(bk.block.id, @downvote_field, @voter_map) %>
+              <div :if={agree_voters == [] && disagree_voters == []} class="text-xs opacity-40">
+                No votes yet.
+              </div>
+              <div :if={agree_voters != [] || disagree_voters != []} class="space-y-2">
+                <div :for={user <- agree_voters} class="flex items-start gap-3 text-sm">
+                  <span class="badge badge-success badge-sm shrink-0 mt-0.5">Agree</span>
+                  <span class="font-medium opacity-70">@{user.username || user.email}</span>
+                  <% reason = @all_reasons_map[{bk.block.id, user.id}] %>
+                  <span :if={reason} class="text-xs opacity-50 flex-1 truncate">
+                    — {reason_preview(reason)}
+                  </span>
+                </div>
+                <div :for={user <- disagree_voters} class="flex items-start gap-3 text-sm">
+                  <span class="badge badge-error badge-sm shrink-0 mt-0.5">Disagree</span>
+                  <span class="font-medium opacity-70">@{user.username || user.email}</span>
+                  <% reason = @all_reasons_map[{bk.block.id, user.id}] %>
+                  <span :if={reason} class="text-xs opacity-50 flex-1 truncate">
+                    — {reason_preview(reason)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
