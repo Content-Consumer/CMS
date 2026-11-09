@@ -407,7 +407,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="card-body py-4 px-5">
               <div class="flex items-center gap-2 mb-3 flex-wrap">
                 <span class={"badge badge-sm border-0 #{kind_badge_class(@focused_node.kind)}"}>
-                  {@focused_node.kind}
+                  {kind_label(@focused_node.kind)}
                 </span>
                 <.link href={"/blocks/#{@focused_node.block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
                   {@focused_node.block.id}
@@ -483,7 +483,7 @@ defmodule Deliberation.Web.ActivityLive do
               </div>
             </div>
             <div :if={@focused_rels.supporting == [] && @focused_rels.attacking == []} class="text-sm opacity-40 py-4">
-              No arguments linked to this statement yet.
+              No arguments linked to this opinion yet.
             </div>
             <%!-- Add argument picker --%>
             <div :if={not is_nil(@current_scope && @current_scope.user) && (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 pt-2">
@@ -508,7 +508,7 @@ defmodule Deliberation.Web.ActivityLive do
             </div>
             <div :if={@rel_picker && elem(@rel_picker, 0) == @focused_node.block.id} class="mt-3 pt-3 border-t border-base-200">
               <p class="text-xs font-medium opacity-60 mb-2">
-                Pick an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this statement:
+                Pick an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this opinion:
               </p>
               <form phx-change="search_rel" phx-submit="search_rel" class="mb-2">
                 <input type="text" name="query" value={@rel_search_query} placeholder="Filter arguments…" phx-debounce="150" class="input input-sm input-bordered w-full" autofocus />
@@ -555,7 +555,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="card-body py-4 px-5">
               <div class="flex items-center gap-2 mb-2 flex-wrap">
                 <span class={"badge badge-sm border-0 #{kind_badge_class(bk.kind)}"}>
-                  {bk.kind}
+                  {kind_label(bk.kind)}
                 </span>
                 <.link href={"/blocks/#{bk.block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
                   {bk.block.id}
@@ -613,7 +613,7 @@ defmodule Deliberation.Web.ActivityLive do
               </div>
               <div :if={@rel_picker && elem(@rel_picker, 0) == bk.block.id} class="mt-3 pt-3 border-t border-base-200">
                 <p class="text-xs font-medium opacity-60 mb-2">
-                  Pick an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this statement:
+                  Pick an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this opinion:
                 </p>
                 <form phx-change="search_rel" phx-submit="search_rel" class="mb-2">
                   <input type="text" name="query" value={@rel_search_query} placeholder="Filter arguments…" phx-debounce="150" class="input input-sm input-bordered w-full" autofocus />
@@ -652,7 +652,7 @@ defmodule Deliberation.Web.ActivityLive do
       <%!-- Sources view (:sources) --%>
       <div :if={@live_action == :sources}>
         <div class="flex items-center justify-between mb-4">
-          <p class="text-sm opacity-50">Blocks in this pool can be used as statements and arguments.</p>
+          <p class="text-sm opacity-50">Blocks in this pool can be used as opinions and arguments.</p>
           <div :if={is_nil(@source_add_mode)} class="flex gap-2">
             <button phx-click="set_source_add_mode" phx-value-mode="search" class="btn btn-sm btn-ghost gap-1">
               <.icon name="hero-magnifying-glass" class="h-4 w-4" /> Add existing
@@ -725,7 +725,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="card-body py-3 px-4">
               <div :if={@source_remove_warning == src.block_id} class="mb-3 p-3 bg-warning/10 border border-warning rounded-lg text-sm">
                 <p class="font-medium text-warning mb-1">Cannot remove — block is in use</p>
-                <p class="opacity-70 text-xs">This block is used as a statement or argument in this activity. Remove those first, then try again.</p>
+                <p class="opacity-70 text-xs">This block is used as an opinion or argument in this activity. Remove those first, then try again.</p>
                 <button phx-click="dismiss_source_warning" class="btn btn-ghost btn-xs mt-2">Dismiss</button>
               </div>
               <div class="flex items-start gap-3">
@@ -765,7 +765,7 @@ defmodule Deliberation.Web.ActivityLive do
             >
               <div class="card-body py-3 px-4">
                 <div class="flex items-start gap-2">
-                  <span class="badge badge-sm border-0 bg-accent-100 text-accent-700 shrink-0 mt-0.5">statement</span>
+                  <span class="badge badge-sm border-0 bg-accent-100 text-accent-700 shrink-0 mt-0.5">opinion</span>
                   <p class="text-sm">{stmt_data.bk.block.block_content.content}</p>
                 </div>
                 <div :if={stmt_data.supporting != [] || stmt_data.attacking != []} class="flex gap-2 mt-1 flex-wrap">
@@ -1060,6 +1060,9 @@ defmodule Deliberation.Web.ActivityLive do
   defp kind_badge_class("argument"), do: "bg-brand-100 text-brand-700"
   defp kind_badge_class("statement"), do: "bg-accent-100 text-accent-700"
   defp kind_badge_class(_), do: "bg-ink-100 text-ink-600"
+
+  defp kind_label("statement"), do: "opinion"
+  defp kind_label(other), do: other
 
   defp rel_badge_class("supports"), do: "bg-brand-100 text-brand-700"
   defp rel_badge_class(_), do: "bg-ink-200 text-ink-700"

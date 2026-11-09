@@ -441,13 +441,13 @@ defmodule Deliberation.Web.VotingActivityLive do
 
               <%!-- Reason picker --%>
               <div :if={@reason_picker_block_id == bk.block.id} class="mt-3 pt-3 border-t border-base-200">
-                <p class="text-xs font-medium opacity-60 mb-2">Pick a statement from the linked argument activities as your reason:</p>
+                <p class="text-xs font-medium opacity-60 mb-2">Pick an opinion from the linked argument activities as your reason:</p>
                 <form phx-change="search_reason" phx-submit="search_reason" class="mb-2">
                   <input
                     type="text"
                     name="query"
                     value={@reason_search_query}
-                    placeholder="Filter statements…"
+                    placeholder="Filter opinions…"
                     phx-debounce="150"
                     class="input input-sm input-bordered w-full"
                     autofocus
@@ -457,7 +457,7 @@ defmodule Deliberation.Web.VotingActivityLive do
                   No argument activities linked. Link one above to cite reasons.
                 </div>
                 <div :if={filter_argument_blocks(@argument_blocks, @reason_search_query) == [] && @argument_blocks != []} class="text-xs opacity-50 py-2">
-                  No statements match your search.
+                  No opinions match your search.
                 </div>
                 <div class="flex flex-col gap-1 max-h-56 overflow-y-auto">
                   <button
