@@ -11,6 +11,9 @@ defmodule WikiWeb.BlockDetailLive do
        relations: [],
        extension_sections: [],
        referencing_blocks: [],
+       text_selection: nil,
+       argdown_kind: nil,
+       argdown_activities: [],
        breadcrumbs: []
      )}
   end
@@ -31,7 +34,7 @@ defmodule WikiWeb.BlockDetailLive do
               is_nil(s.block_content_version) or
                 s.block_content_version.content != current_content
 
-            %{id: s.id, from_ix: s.from_ix, to_ix: s.to_ix, text: s.text || "", is_stale: is_stale}
+            %{id: s.id, from_ix: s.from_ix, to_ix: s.to_ix, text: s.text || "", is_stale: is_stale, is_annotation: is_nil(s.text)}
           end)
 
         relations = Wiki.BlockRelationship.list_relations_for_block(id)
@@ -74,55 +77,173 @@ defmodule WikiWeb.BlockDetailLive do
     {:noreply, socket}
   end
 
+  # --- Component messages ---
+
   @impl true
-  def handle_event("text_selected", _params, socket), do: {:noreply, socket}
+  def handle_info({:block_deleted, _id}, socket) do
+    {:noreply, push_navigate(socket, to: "/blocks")}
+  end
+
+  @impl true
+  def handle_info({:block_updated, id}, socket) do
+    {:noreply, push_patch(socket, to: "/blocks/#{id}")}
+  end
+
+  @impl true
+  def handle_info({:put_flash, level, msg}, socket) do
+    {:noreply, put_flash(socket, level, msg)}
+  end
+
+  @impl true
+  def handle_info({:block_extension_action, "deliberation_add_argument", block_id}, socket) do
+    block = socket.assigns.block
+
+    if block && block.id == block_id && block.block_content.content != "" do
+      content = block.block_content.content
+      activities = Deliberation.list_argument_activities()
+
+      {:noreply,
+       assign(socket,
+         text_selection: %{
+           block_id: block_id,
+           text: content,
+           from_ix: 0,
+           to_ix: String.length(content)
+         },
+         argdown_kind: "argument",
+         argdown_activities: activities
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info({:block_extension_action, _event, _block_id}, socket) do
+    {:noreply, socket}
+  end
+
+  # --- Text selection / highlight / argdown events ---
+
+  @impl true
+  def handle_event("text_selected", %{"block_id" => block_id, "text" => text, "from_ix" => from_ix, "to_ix" => to_ix}, socket) do
+    activities = Deliberation.list_argument_activities()
+
+    {:noreply,
+     assign(socket,
+       text_selection: %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix},
+       argdown_kind: nil,
+       argdown_activities: activities
+     )}
+  end
+
+  @impl true
+  def handle_event("argdown_dismiss", _params, socket) do
+    {:noreply, assign(socket, text_selection: nil, argdown_kind: nil)}
+  end
+
+  @impl true
+  def handle_event("argdown_select_kind", %{"kind" => kind}, socket) do
+    {:noreply, assign(socket, argdown_kind: kind)}
+  end
+
+  @impl true
+  def handle_event("argdown_create", %{"activity_id" => activity_id}, socket) do
+    base_scope = socket.assigns.current_scope
+    activity = Wiki.Activity.get_group_activity(activity_id)
+
+    scope =
+      with %Wiki.Accounts.Scope{} <- base_scope,
+           %Wiki.Activity.GroupActivity{} <- activity do
+        base_scope
+        |> Wiki.Accounts.Scope.with_dimension(activity.dimension)
+        |> Wiki.Accounts.Scope.with_activity(activity)
+      else
+        _ -> base_scope
+      end
+
+    cond do
+      is_nil(base_scope && base_scope.user) ->
+        {:noreply, put_flash(socket, :error, "You must be logged in")}
+
+      is_nil(activity) ->
+        {:noreply, put_flash(socket, :error, "Activity not found")}
+
+      true ->
+        %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} = socket.assigns.text_selection
+        kind = socket.assigns.argdown_kind
+
+        case Deliberation.create_argdown_block(block_id, text, from_ix, to_ix, kind, activity_id, scope.user.id) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(text_selection: nil, argdown_kind: nil)
+             |> push_patch(to: "/blocks/#{block_id}")
+             |> put_flash(:info, "#{String.capitalize(kind)} added to Deliberation")}
+
+          {:error, reason} ->
+            {:noreply,
+             socket
+             |> assign(text_selection: nil, argdown_kind: nil)
+             |> put_flash(:error, "Failed to create block: #{inspect(reason)}")}
+        end
+    end
+  end
+
+  @impl true
+  def handle_event("create_highlight", _, socket) do
+    case socket.assigns.text_selection do
+      nil ->
+        {:noreply, socket}
+
+      %{block_id: block_id, text: text, from_ix: from_ix, to_ix: to_ix} ->
+        user_id = socket.assigns.current_scope && socket.assigns.current_scope.user && socket.assigns.current_scope.user.id
+
+        case Wiki.SubBlock.create_subblock(block_id, from_ix, to_ix, text, user_id) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(text_selection: nil)
+             |> push_patch(to: "/blocks/#{block_id}")
+             |> put_flash(:info, "Highlight created")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to create highlight")}
+        end
+    end
+  end
 
   @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} breadcrumbs={@breadcrumbs} current_scope={@current_scope}>
       <div class="max-w-3xl mx-auto px-4 py-8">
-        <div class="flex items-start justify-between mb-6">
-          <div>
-            <h1 :if={@title} class="text-2xl font-bold mb-1">{@title}</h1>
-            <div class="flex items-center gap-2 flex-wrap">
-              <code class="text-xs opacity-40">{@block.id}</code>
-              <span :if={@block.created_by && @block.created_by.username} class="text-xs opacity-40">
-                · @{@block.created_by.username}
-              </span>
-            </div>
-          </div>
-          <.link
-            :if={@current_scope && @current_scope.user && @current_scope.user.id == @block.created_by_id}
-            href="/blocks"
-            class="btn btn-ghost btn-sm gap-1"
-          >
-            <.icon name="hero-pencil-square" class="h-4 w-4" /> Edit
-          </.link>
+
+        <%!-- Page header --%>
+        <div class="mb-4">
+          <h1 :if={@title} class="text-2xl font-bold mb-1">{@title}</h1>
+          <code class="text-xs opacity-30">{@block.id}</code>
         </div>
 
-        <div class="card bg-base-100 border border-base-300 mb-6">
-          <div class="card-body py-4 px-5">
-            <div
-              id={"argdown-#{@block.id}"}
-              phx-hook="ArgdownSelector"
-              data-block-id={@block.id}
-              data-subblocks={Jason.encode!(@subblocks_data)}
-              class="block-preview text-sm"
-            >
-              {render_markdown(@block.block_content.content)}
-            </div>
-          </div>
+        <%!-- Block card — full functionality via component --%>
+        <div class="mb-6">
+          <.live_component
+            module={WikiWeb.BlockCardLive}
+            id={@block.id}
+            block={@block}
+            current_scope={@current_scope}
+            subblocks={@subblocks_data}
+          />
         </div>
 
         <%!-- Highlights --%>
-        <div :if={@subblocks_data != []} class="mb-6">
+        <div :if={Enum.any?(@subblocks_data, &(!&1.is_annotation))} class="mb-6">
           <h2 class="text-xs font-semibold opacity-50 uppercase tracking-widest mb-3">
-            Highlights ({length(@subblocks_data)})
+            Highlights ({Enum.count(@subblocks_data, &(!&1.is_annotation))})
           </h2>
           <div class="space-y-1">
             <.link
-              :for={sub <- @subblocks_data}
+              :for={sub <- Enum.reject(@subblocks_data, & &1.is_annotation)}
               href={"/subblocks/#{sub.id}"}
               class="flex items-center gap-2 text-sm px-3 py-2 rounded-box hover:bg-base-200"
             >
@@ -186,6 +307,64 @@ defmodule WikiWeb.BlockDetailLive do
           </div>
         </div>
       </div>
+
+      <%!-- Selection popover (highlight / add argument) --%>
+      <div
+        :if={@text_selection != nil}
+        id="detail-argdown-popover"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-4"
+      >
+        <div class="rounded-box border border-base-300 bg-base-100 shadow-lg p-4 text-sm">
+          <div :if={is_nil(@argdown_kind)}>
+            <p class="text-xs font-medium opacity-60 mb-3">
+              "<span class="italic">{@text_selection.text}</span>"
+            </p>
+            <div class="flex flex-col gap-3">
+              <div>
+                <button phx-click="create_highlight" class="btn btn-sm btn-outline">
+                  Highlight
+                </button>
+              </div>
+              <div class="border-t border-base-200 pt-3">
+                <p class="text-xs opacity-40 mb-2">Deliberation</p>
+                <div class="flex gap-2">
+                  <button
+                    phx-click="argdown_select_kind"
+                    phx-value-kind="argument"
+                    class="btn btn-sm btn-outline"
+                  >
+                    Add argument
+                  </button>
+                </div>
+              </div>
+              <div class="border-t border-base-200 pt-3">
+                <button phx-click="argdown_dismiss" class="btn btn-sm btn-ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <div :if={not is_nil(@argdown_kind)}>
+            <p class="text-xs font-medium opacity-60 mb-3">
+              Add as <strong>{@argdown_kind}</strong> to which activity?
+            </p>
+            <div :if={@argdown_activities == []} class="text-xs opacity-50 mb-2">
+              No argument activities yet.
+              <.link href="/ext/deliberation/argument/new" class="link">Create one</.link> first.
+            </div>
+            <div class="flex flex-col gap-1 mb-2">
+              <button
+                :for={activity <- @argdown_activities}
+                phx-click="argdown_create"
+                phx-value-activity_id={activity.id}
+                class="btn btn-sm btn-outline justify-start"
+              >
+                {activity.name}
+              </button>
+            </div>
+            <button phx-click="argdown_dismiss" class="btn btn-sm btn-ghost">Cancel</button>
+          </div>
+        </div>
+      </div>
     </Layouts.app>
     """
   end
@@ -197,20 +376,5 @@ defmodule WikiWeb.BlockDetailLive do
   defp other_block_preview(rel, block_id) do
     other = if rel.source_block_id == block_id, do: rel.target_block, else: rel.source_block
     String.slice(other.block_content.content, 0, 80)
-  end
-
-  defp render_markdown(content) do
-    case Earmark.as_html(content) do
-      {:ok, html, _} -> {:safe, process_subblock_refs(html)}
-      {:error, html, _} -> {:safe, process_subblock_refs(html)}
-    end
-  end
-
-  defp process_subblock_refs(html) do
-    Regex.replace(
-      ~r/<a href="sblk:\/\/(sblk_[^"]+)"[^>]*>(.*?)<\/a>/s,
-      html,
-      ~s(<a href="/subblocks/\\1" class="subblock-ref" title="View highlight">\\2<span class="subblock-ref-icon"> ↗</span></a>)
-    )
   end
 end
