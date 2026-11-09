@@ -28,7 +28,9 @@ defmodule Deliberation.Web.ActivityLive do
        source_text_input: "",
        source_search_query: "",
        source_search_results: [],
-       source_remove_warning: nil
+       source_remove_warning: nil,
+       opinion_add_open: false,
+       opinion_text_input: ""
      )}
   end
 
@@ -254,6 +256,42 @@ defmodule Deliberation.Web.ActivityLive do
     end
   end
 
+  # ── Opinion events ───────────────────────────────────────────────────────────
+
+  @impl true
+  def handle_event("open_add_opinion", _, socket) do
+    {:noreply, assign(socket, opinion_add_open: true, opinion_text_input: "")}
+  end
+
+  @impl true
+  def handle_event("cancel_add_opinion", _, socket) do
+    {:noreply, assign(socket, opinion_add_open: false, opinion_text_input: "")}
+  end
+
+  @impl true
+  def handle_event("add_opinion", %{"content" => content}, socket) do
+    scope = socket.assigns.current_scope
+    user_id = scope && scope.user && scope.user.id
+    activity_id = socket.assigns.activity.id
+
+    if String.trim(content) == "" do
+      {:noreply, put_flash(socket, :error, "Opinion cannot be empty")}
+    else
+      case Deliberation.create_statement_block(content, activity_id, user_id) do
+        {:ok, _} ->
+          socket =
+            socket
+            |> assign(opinion_add_open: false, opinion_text_input: "")
+            |> load_activity_blocks(activity_id)
+
+          {:noreply, socket}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to create opinion")}
+      end
+    end
+  end
+
   # ── Source events ────────────────────────────────────────────────────────────
 
   @impl true
@@ -352,7 +390,7 @@ defmodule Deliberation.Web.ActivityLive do
               navigate={"/ext/deliberation/argument/#{@activity.id}"}
               class={"tab #{if @live_action == :show, do: "tab-active"}"}
             >
-              List
+              Opinions
             </.link>
             <.link
               role="tab"
@@ -550,18 +588,44 @@ defmodule Deliberation.Web.ActivityLive do
 
       <%!-- List view (:show) --%>
       <div :if={@live_action == :show}>
+        <div :if={not @opinion_add_open && not is_nil(@current_scope && @current_scope.user)} class="mb-4">
+          <button phx-click="open_add_opinion" class="btn btn-primary btn-sm gap-1">
+            <.icon name="hero-plus" class="h-4 w-4" /> Add opinion
+          </button>
+        </div>
+
+        <%!-- Add opinion form --%>
+        <div :if={@opinion_add_open} class="card bg-base-100 border border-base-300 mb-4">
+          <div class="card-body py-4 px-5">
+            <h3 class="font-medium text-sm mb-3">New opinion</h3>
+            <form phx-submit="add_opinion">
+              <textarea
+                name="content"
+                placeholder="State your opinion…"
+                class="textarea textarea-bordered w-full text-sm"
+                rows="3"
+                autofocus
+              ></textarea>
+              <div class="flex justify-end gap-2 mt-3">
+                <button type="button" phx-click="cancel_add_opinion" class="btn btn-ghost btn-sm">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">Add opinion</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <div class="space-y-3">
-          <div :for={bk <- @filtered_block_kinds} class="card bg-base-100 border border-base-300 shadow-xs">
+          <div
+            :for={bk <- Enum.filter(@filtered_block_kinds, &(&1.kind == "statement"))}
+            class="card bg-base-100 border border-base-300 shadow-xs"
+          >
             <div class="card-body py-4 px-5">
               <div class="flex items-center gap-2 mb-2 flex-wrap">
-                <span class={"badge badge-sm border-0 #{kind_badge_class(bk.kind)}"}>
-                  {kind_label(bk.kind)}
-                </span>
                 <.link href={"/blocks/#{bk.block.id}"} class="text-xs opacity-40 font-mono hover:opacity-70 hover:underline">
                   {bk.block.id}
                 </.link>
                 <span :if={bk.created_by} class="text-xs opacity-40 ml-auto">
-                  Added by {bk.created_by.email}
+                  {bk.created_by.email}
                 </span>
               </div>
               <div class="text-sm prose prose-sm max-w-none">
@@ -591,7 +655,7 @@ defmodule Deliberation.Web.ActivityLive do
                   {vote_count_for(bk.block.id, @downvote_field, @vote_map)}
                 </button>
               </div>
-              <div :if={bk.kind == "statement" && not is_nil(@current_scope && @current_scope.user) && (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
+              <div :if={not is_nil(@current_scope && @current_scope.user) && (@rel_types["supports"] || @rel_types["attacks"])} class="flex gap-2 mt-3 pt-3 border-t border-base-200">
                 <button
                   :if={@rel_types["supports"]}
                   phx-click="show_rel_picker"
@@ -628,7 +692,7 @@ defmodule Deliberation.Web.ActivityLive do
                 </div>
                 <button phx-click="hide_rel_picker" class="btn btn-ghost btn-xs mt-2">Cancel</button>
               </div>
-              <div :if={bk.kind == "statement" && @rel_map[bk.block.id] not in [nil, []]} class="mt-2 space-y-1">
+              <div :if={@rel_map[bk.block.id] not in [nil, []]} class="mt-2 space-y-1">
                 <div :for={rel <- (@rel_map[bk.block.id] || [])} class="flex items-center gap-2 text-xs">
                   <span class={"badge badge-xs border-0 #{rel_badge_class(rel.type.name)}"}>
                     {rel.type.label}
@@ -643,10 +707,12 @@ defmodule Deliberation.Web.ActivityLive do
               </div>
             </div>
           </div>
-          <div :if={@block_kinds == []} class="text-center py-16 text-base-content/40">
-            No blocks added to this activity yet.
+
+          <div :if={Enum.filter(@filtered_block_kinds, &(&1.kind == "statement")) == [] && !@opinion_add_open} class="text-center py-16 text-base-content/40 text-sm">
+            No opinions yet.
           </div>
         </div>
+
       </div>
 
       <%!-- Sources view (:sources) --%>
@@ -725,7 +791,7 @@ defmodule Deliberation.Web.ActivityLive do
             <div class="card-body py-3 px-4">
               <div :if={@source_remove_warning == src.block_id} class="mb-3 p-3 bg-warning/10 border border-warning rounded-lg text-sm">
                 <p class="font-medium text-warning mb-1">Cannot remove — block is in use</p>
-                <p class="opacity-70 text-xs">This block is used as an opinion or argument in this activity. Remove those first, then try again.</p>
+                <p class="opacity-70 text-xs">This block is used as an argument in this activity. Remove that argument first, then try again.</p>
                 <button phx-click="dismiss_source_warning" class="btn btn-ghost btn-xs mt-2">Dismiss</button>
               </div>
               <div class="flex items-start gap-3">
@@ -900,6 +966,21 @@ defmodule Deliberation.Web.ActivityLive do
       |> put_flash(:error, "Activity not found")
       |> push_navigate(to: "/ext/deliberation/argument")
     end
+  end
+
+  defp load_activity_blocks(socket, activity_id) do
+    all_block_kinds = Deliberation.list_blocks_for_activity(activity_id)
+    block_kinds = Enum.reject(all_block_kinds, &(&1.kind == "source"))
+
+    block_ids = Enum.map(block_kinds, & &1.block.id)
+    rel_map = if block_ids == [], do: %{}, else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
+
+    vote_map = load_vote_map(block_kinds, socket.assigns.upvote_field, socket.assigns.downvote_field)
+    voter_map = load_voter_map(vote_map, socket.assigns.upvote_field, socket.assigns.downvote_field)
+
+    socket
+    |> assign(block_kinds: block_kinds, rel_map: rel_map, vote_map: vote_map, voter_map: voter_map)
+    |> apply_search(socket.assigns.search_query)
   end
 
   defp build_graph_data(block_kinds, rel_map, rel_types) do
