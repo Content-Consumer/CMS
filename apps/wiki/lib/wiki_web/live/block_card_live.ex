@@ -31,13 +31,18 @@ defmodule WikiWeb.BlockCardLive do
     block = assigns.block
     prev_block = socket.assigns[:block]
 
-    socket = assign(socket, assigns)
+    # Carry over all parent assigns except :block — we manage block ourselves
+    # after first load so the parent can't overwrite our preloaded associations.
+    socket = assign(socket, Map.drop(assigns, [:block]))
     socket = assign(socket, is_owner: is_owner?(assigns[:current_scope], block))
 
-    needs_load = !socket.assigns.data_loaded || (prev_block && prev_block.id != block.id)
-    socket = if needs_load, do: load_block_data(socket, block), else: socket
+    needs_load = !socket.assigns.data_loaded || is_nil(prev_block) || prev_block.id != block.id
 
-    {:ok, socket}
+    if needs_load do
+      {:ok, socket |> assign(block: block) |> load_block_data(block)}
+    else
+      {:ok, socket}
+    end
   end
 
   @impl true
