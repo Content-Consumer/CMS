@@ -37,8 +37,9 @@ RUN cd apps/wiki/assets && npm ci
 RUN mix esbuild.install --if-missing
 RUN mix tailwind.install --if-missing
 
-# ── Application source ────────────────────────────────────────────────────────
+# ── Application source & release overlays ────────────────────────────────────
 COPY apps apps/
+COPY rel rel/
 
 # Build minified assets and generate cache manifest
 RUN mix cmd --cd apps/wiki mix assets.deploy
