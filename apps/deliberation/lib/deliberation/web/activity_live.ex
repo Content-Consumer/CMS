@@ -724,7 +724,7 @@ defmodule Deliberation.Web.ActivityLive do
 
       <%!-- Arguments view (:sources) --%>
       <div :if={@live_action == :sources}>
-        <% arguments = Enum.filter(@block_kinds, &(&1.kind == "argument")) %>
+        <% arguments = Enum.filter(@filtered_block_kinds, &(&1.kind == "argument")) %>
         <div :if={arguments == []} class="text-center py-16 text-base-content/40 text-sm">
           No arguments added yet.
         </div>
@@ -968,6 +968,7 @@ defmodule Deliberation.Web.ActivityLive do
           String.contains?(String.downcase(bk.block.block_content.content), q)
         end)
       end
+      |> Enum.sort_by(& &1.block.inserted_at, {:desc, DateTime})
 
     graph_data = build_graph_data(filtered, socket.assigns.rel_map, socket.assigns.rel_types)
 
