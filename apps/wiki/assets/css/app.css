@@ -48,6 +48,7 @@
   --highlight-active-bg: #f59e0b40;
   --highlight-stale-bg: #94a3b830;
   --highlight-stale-line: #94a3b8;
+  --annotation-line: #818cf8;
 }
 
 [data-theme=dark] {
@@ -94,6 +95,7 @@
   --highlight-active-bg: #f59e0b55;
   --highlight-stale-bg: #64748b50;
   --highlight-stale-line: #64748b;
+  --annotation-line: #a5b4fc;
 }
 
 /* Tailwind utility classes backed by palette CSS vars */
@@ -403,6 +405,15 @@ mark.highlight-stale {
   background-color: var(--highlight-stale-bg);
   color: inherit;
   text-decoration: underline wavy var(--highlight-stale-line);
+  cursor: pointer;
+}
+
+mark.highlight-annotation {
+  background-color: transparent;
+  color: inherit;
+  text-decoration: underline 2px solid var(--annotation-line);
+  text-underline-offset: 3px;
+  border-radius: 2px;
   cursor: pointer;
 }
 

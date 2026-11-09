@@ -244,7 +244,7 @@ defmodule WikiWeb.BlocksLive do
                 is_nil(s.block_content_version) or
                   s.block_content_version.content != current_content
 
-              %{id: s.id, from_ix: s.from_ix, to_ix: s.to_ix, text: s.text || "", is_stale: is_stale}
+              %{id: s.id, from_ix: s.from_ix, to_ix: s.to_ix, text: s.text || "", is_stale: is_stale, is_annotation: is_nil(s.text)}
             end)
 
           {id, sub_data}

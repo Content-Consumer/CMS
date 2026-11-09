@@ -1,38 +1,18 @@
+// Offsets are absolute character positions across all text nodes (marks included),
+// so they remain stable regardless of which marks exist at capture or render time.
 function getTextOffset(container, node, offset) {
   let total = 0
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
-    acceptNode(n) {
-      if (n.parentElement.closest('mark[data-subblock-id]')) return NodeFilter.FILTER_REJECT
-      return NodeFilter.FILTER_ACCEPT
-    }
-  })
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
   while (walker.nextNode()) {
     if (walker.currentNode === node) return total + offset
     total += walker.currentNode.textContent.length
   }
-  // Node was inside an existing mark — walk unfiltered to get its raw position
-  const raw = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
-  let rawTotal = 0
-  while (raw.nextNode()) {
-    if (raw.currentNode === node) return rawTotal + offset
-    if (!raw.currentNode.parentElement.closest('mark[data-subblock-id]')) {
-      rawTotal += raw.currentNode.textContent.length
-    }
-  }
   return offset
 }
 
-// Find the text node and local offset for a given cumulative character position,
-// skipping text nodes inside <mark data-subblock-id> elements (already injected)
 function findNodeAtOffset(container, targetOffset) {
   let total = 0
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      // Skip text inside already-injected marks to avoid double-counting
-      if (node.parentElement.closest('mark[data-subblock-id]')) return NodeFilter.FILTER_REJECT
-      return NodeFilter.FILTER_ACCEPT
-    }
-  })
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
   while (walker.nextNode()) {
     const len = walker.currentNode.textContent.length
     if (total + len >= targetOffset) {
@@ -71,8 +51,16 @@ function renderHighlights(container, subblocks) {
     const mark = document.createElement('mark')
     mark.dataset.subblockId = sub.id
     mark.dataset.subblockText = sub.text || ''
-    mark.classList.add(sub.is_stale ? 'highlight-stale' : 'highlight-active')
-    mark.title = sub.is_stale ? 'This highlight is from an older version of the block' : 'Click to copy highlight ID'
+    if (sub.is_stale) {
+      mark.classList.add('highlight-stale')
+      mark.title = 'This highlight is from an older version of the block'
+    } else if (sub.is_annotation) {
+      mark.classList.add('highlight-annotation')
+      mark.title = 'Argument annotation — click to copy ID'
+    } else {
+      mark.classList.add('highlight-active')
+      mark.title = 'Click to copy highlight ID'
+    }
 
     try {
       range.surroundContents(mark)
