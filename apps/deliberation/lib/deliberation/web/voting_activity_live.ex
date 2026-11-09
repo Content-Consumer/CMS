@@ -109,6 +109,34 @@ defmodule Deliberation.Web.VotingActivityLive do
   end
 
   @impl true
+  def handle_event("delete_poll_item", %{"block-kind-id" => bk_id}, socket) do
+    scope = socket.assigns.current_scope
+    bk = Enum.find(socket.assigns.poll_items, &(&1.id == bk_id))
+
+    cond do
+      is_nil(scope && scope.user) ->
+        {:noreply, put_flash(socket, :error, "You must be logged in")}
+
+      is_nil(bk) || bk.created_by_id != scope.user.id ->
+        {:noreply, put_flash(socket, :error, "Not authorised")}
+
+      true ->
+        case Deliberation.delete_poll_item(bk_id) do
+          {:ok, _} ->
+            poll_items = Deliberation.list_poll_items(socket.assigns.activity.id)
+            {:noreply,
+             socket
+             |> assign(poll_items: poll_items)
+             |> refresh_vote_data(poll_items)
+             |> put_flash(:info, "Poll question deleted")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to delete poll question")}
+        end
+    end
+  end
+
+  @impl true
   def handle_event("show_editor", _, socket) do
     {:noreply, assign(socket, show_editor: true)}
   end
@@ -411,8 +439,18 @@ defmodule Deliberation.Web.VotingActivityLive do
               <div class="flex items-center gap-2 mb-2">
                 <span class="badge badge-sm badge-ghost">poll question</span>
                 <span :if={bk.created_by} class="text-xs opacity-40 ml-auto">
-                  Added by {bk.created_by.email}
+                  Added by @{bk.created_by.username || bk.created_by.email}
                 </span>
+                <button
+                  :if={@current_scope && @current_scope.user && bk.created_by_id == @current_scope.user.id}
+                  phx-click="delete_poll_item"
+                  phx-value-block-kind-id={bk.id}
+                  data-confirm="Delete this poll question?"
+                  class="btn btn-ghost btn-xs text-error"
+                  title="Delete poll question"
+                >
+                  <.icon name="hero-trash" class="h-3.5 w-3.5" />
+                </button>
               </div>
 
               <%!-- Content --%>
@@ -432,7 +470,6 @@ defmodule Deliberation.Web.VotingActivityLive do
                 >
                   <.icon name="hero-hand-thumb-up" class="h-4 w-4 shrink-0" />
                   Agree
-                  <span class="opacity-60">{vote_count_for(bk.block.id, @upvote_field, @vote_map)}</span>
                 </button>
                 <button
                   :if={@downvote_field && @current_scope && @current_scope.user}
@@ -444,7 +481,6 @@ defmodule Deliberation.Web.VotingActivityLive do
                 >
                   <.icon name="hero-hand-thumb-down" class="h-4 w-4 shrink-0" />
                   Disagree
-                  <span class="opacity-60">{vote_count_for(bk.block.id, @downvote_field, @vote_map)}</span>
                 </button>
 
                 <%!-- Reason section --%>

@@ -122,6 +122,21 @@ defmodule Deliberation do
     end)
   end
 
+  def delete_poll_item(block_kind_id) do
+    case Repo.get(BlockKind, block_kind_id) do
+      nil -> {:error, :not_found}
+      bk ->
+        Repo.transaction(fn ->
+          with {:ok, _} <- Repo.delete(bk),
+               {:ok, _} <- Wiki.TextBlock.delete_block(bk.block_id) do
+            :ok
+          else
+            {:error, reason} -> Repo.rollback(reason)
+          end
+        end)
+    end
+  end
+
   def list_poll_items(activity_id) do
     BlockKind
     |> where([bk], bk.group_activity_id == ^activity_id and bk.kind == "poll_item")
