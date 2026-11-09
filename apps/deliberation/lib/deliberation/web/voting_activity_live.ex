@@ -18,6 +18,11 @@ defmodule Deliberation.Web.VotingActivityLive do
        voter_map: %{},
        reason_map: %{},
        all_reasons_map: %{},
+       cluster_subtab: "hierarchical",
+       cluster_vote_grid: %{},
+       hierarchical_clusters: [],
+       similarity_groups: [],
+       similarity_isolated: [],
        argument_blocks: [],
        reason_picker_block_id: nil,
        reason_search_query: "",
@@ -51,6 +56,11 @@ defmodule Deliberation.Web.VotingActivityLive do
         reason_map = if va_id && user_id && block_ids != [], do: Deliberation.load_vote_reasons(block_ids, va_id, user_id), else: %{}
         all_reasons_map = if va_id && block_ids != [], do: Deliberation.load_all_vote_reasons(block_ids, va_id), else: %{}
 
+        {cluster_users, cluster_vote_grid, numeric_vectors} =
+          Deliberation.Clustering.build_vote_data(poll_items, voter_map, upvote_field, downvote_field)
+        hierarchical_clusters = Deliberation.Clustering.hierarchical(cluster_users, numeric_vectors)
+        {sim_groups, sim_isolated} = Deliberation.Clustering.similarity_groups(cluster_users, numeric_vectors)
+
         scope =
           socket.assigns.current_scope
           |> Wiki.Accounts.Scope.with_dimension(activity.dimension)
@@ -67,6 +77,10 @@ defmodule Deliberation.Web.VotingActivityLive do
           voter_map: voter_map,
           reason_map: reason_map,
           all_reasons_map: all_reasons_map,
+          cluster_vote_grid: cluster_vote_grid,
+          hierarchical_clusters: hierarchical_clusters,
+          similarity_groups: sim_groups,
+          similarity_isolated: sim_isolated,
           argument_blocks: argument_blocks,
           page_title: activity.name,
           breadcrumbs: [
@@ -87,6 +101,11 @@ defmodule Deliberation.Web.VotingActivityLive do
   @impl true
   def handle_event("switch_tab", %{"tab" => tab}, socket) do
     {:noreply, assign(socket, tab: tab)}
+  end
+
+  @impl true
+  def handle_event("switch_cluster_subtab", %{"subtab" => subtab}, socket) do
+    {:noreply, assign(socket, cluster_subtab: subtab)}
   end
 
   @impl true
@@ -341,6 +360,14 @@ defmodule Deliberation.Web.VotingActivityLive do
         >
           Results
         </button>
+        <button
+          role="tab"
+          phx-click="switch_tab"
+          phx-value-tab="cluster"
+          class={"tab #{if @tab == "cluster", do: "tab-active"}"}
+        >
+          Cluster
+        </button>
       </div>
 
       <%!-- Poll tab --%>
@@ -520,6 +547,172 @@ defmodule Deliberation.Web.VotingActivityLive do
                   <span :if={reason} class="text-xs opacity-50 flex-1 truncate">
                     — {reason_preview(reason)}
                   </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%!-- Cluster tab --%>
+      <div :if={@tab == "cluster"}>
+        <div :if={@hierarchical_clusters == [] && @similarity_groups == [] && @similarity_isolated == []} class="text-center py-16 text-base-content/40">
+          No votes yet — cast some votes to see clusters.
+        </div>
+
+        <div :if={@hierarchical_clusters != [] || @similarity_groups != [] || @similarity_isolated != []}>
+          <%!-- Subtabs --%>
+          <div role="tablist" class="tabs tabs-bordered mb-6">
+            <button
+              role="tab"
+              phx-click="switch_cluster_subtab"
+              phx-value-subtab="hierarchical"
+              class={"tab #{if @cluster_subtab == "hierarchical", do: "tab-active"}"}
+            >
+              Hierarchical
+            </button>
+            <button
+              role="tab"
+              phx-click="switch_cluster_subtab"
+              phx-value-subtab="similarity"
+              class={"tab #{if @cluster_subtab == "similarity", do: "tab-active"}"}
+            >
+              Similarity
+            </button>
+          </div>
+
+          <%!-- Shared: question header legend --%>
+          <div class="flex gap-3 text-xs opacity-40 mb-4 items-center">
+            <span class="inline-block w-4 h-4 rounded bg-success/40 border border-success/60 shrink-0"></span> Agree
+            <span class="inline-block w-4 h-4 rounded bg-error/40 border border-error/60 shrink-0"></span> Disagree
+            <span class="inline-block w-4 h-4 rounded bg-base-200 border border-base-300 shrink-0"></span> No vote
+          </div>
+
+          <%!-- Hierarchical subtab --%>
+          <div :if={@cluster_subtab == "hierarchical"}>
+            <p class="text-xs opacity-40 mb-4">
+              Voters grouped by cosine similarity of their votes (agglomerative, threshold ≥ 0.5).
+            </p>
+            <div class="space-y-6">
+              <div :for={{cluster, idx} <- Enum.with_index(@hierarchical_clusters)}>
+                <p class="text-xs font-semibold uppercase tracking-widest opacity-50 mb-2">
+                  Group {idx + 1} · {length(cluster)} {if length(cluster) == 1, do: "voter", else: "voters"}
+                </p>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th class="text-left font-normal opacity-50 pr-4 pb-2 min-w-24">Voter</th>
+                        <th
+                          :for={bk <- @poll_items}
+                          class="text-left font-normal opacity-50 pb-2 pr-2 max-w-24"
+                          title={bk.block.block_content.content}
+                        >
+                          <span class="block truncate max-w-20">
+                            {String.slice(bk.block.block_content.content, 0, 18)}{if String.length(bk.block.block_content.content) > 18, do: "…"}
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr :for={user <- cluster} class="border-t border-base-200">
+                        <td class="pr-4 py-1.5 font-medium">
+                          @{user.username || String.split(user.email, "@") |> hd()}
+                        </td>
+                        <td :for={bk <- @poll_items} class="pr-2 py-1.5">
+                          <% vote = get_in(@cluster_vote_grid, [user.id, bk.block.id]) || :none %>
+                          <span :if={vote == :agree} class="inline-block w-5 h-5 rounded bg-success/40 border border-success/60" title="Agree"></span>
+                          <span :if={vote == :disagree} class="inline-block w-5 h-5 rounded bg-error/40 border border-error/60" title="Disagree"></span>
+                          <span :if={vote == :none} class="inline-block w-5 h-5 rounded bg-base-200 border border-base-300 opacity-50" title="No vote"></span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <%!-- Similarity subtab --%>
+          <div :if={@cluster_subtab == "similarity"}>
+            <p class="text-xs opacity-40 mb-4">
+              Voters connected if they agree on ≥ 60% of their shared votes. Isolated voters had no strong matches.
+            </p>
+            <div :if={@similarity_groups == [] && @similarity_isolated != []} class="text-sm opacity-50 py-4 text-center">
+              No groups found — no two voters agree enough to cluster together.
+            </div>
+            <div class="space-y-6">
+              <div :for={{group, idx} <- Enum.with_index(@similarity_groups)}>
+                <p class="text-xs font-semibold uppercase tracking-widest opacity-50 mb-2">
+                  Group {idx + 1} · {length(group)} voters
+                </p>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th class="text-left font-normal opacity-50 pr-4 pb-2 min-w-24">Voter</th>
+                        <th
+                          :for={bk <- @poll_items}
+                          class="text-left font-normal opacity-50 pb-2 pr-2"
+                          title={bk.block.block_content.content}
+                        >
+                          <span class="block truncate max-w-20">
+                            {String.slice(bk.block.block_content.content, 0, 18)}{if String.length(bk.block.block_content.content) > 18, do: "…"}
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr :for={user <- group} class="border-t border-base-200">
+                        <td class="pr-4 py-1.5 font-medium">
+                          @{user.username || String.split(user.email, "@") |> hd()}
+                        </td>
+                        <td :for={bk <- @poll_items} class="pr-2 py-1.5">
+                          <% vote = get_in(@cluster_vote_grid, [user.id, bk.block.id]) || :none %>
+                          <span :if={vote == :agree} class="inline-block w-5 h-5 rounded bg-success/40 border border-success/60" title="Agree"></span>
+                          <span :if={vote == :disagree} class="inline-block w-5 h-5 rounded bg-error/40 border border-error/60" title="Disagree"></span>
+                          <span :if={vote == :none} class="inline-block w-5 h-5 rounded bg-base-200 border border-base-300 opacity-50" title="No vote"></span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div :if={@similarity_isolated != []}>
+                <p class="text-xs font-semibold uppercase tracking-widest opacity-50 mb-2">
+                  No strong matches · {length(@similarity_isolated)} {if length(@similarity_isolated) == 1, do: "voter", else: "voters"}
+                </p>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th class="text-left font-normal opacity-50 pr-4 pb-2 min-w-24">Voter</th>
+                        <th
+                          :for={bk <- @poll_items}
+                          class="text-left font-normal opacity-50 pb-2 pr-2"
+                          title={bk.block.block_content.content}
+                        >
+                          <span class="block truncate max-w-20">
+                            {String.slice(bk.block.block_content.content, 0, 18)}{if String.length(bk.block.block_content.content) > 18, do: "…"}
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr :for={user <- @similarity_isolated} class="border-t border-base-200">
+                        <td class="pr-4 py-1.5 font-medium opacity-60">
+                          @{user.username || String.split(user.email, "@") |> hd()}
+                        </td>
+                        <td :for={bk <- @poll_items} class="pr-2 py-1.5">
+                          <% vote = get_in(@cluster_vote_grid, [user.id, bk.block.id]) || :none %>
+                          <span :if={vote == :agree} class="inline-block w-5 h-5 rounded bg-success/40 border border-success/60" title="Agree"></span>
+                          <span :if={vote == :disagree} class="inline-block w-5 h-5 rounded bg-error/40 border border-error/60" title="Disagree"></span>
+                          <span :if={vote == :none} class="inline-block w-5 h-5 rounded bg-base-200 border border-base-300 opacity-50" title="No vote"></span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
