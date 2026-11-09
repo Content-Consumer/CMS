@@ -361,16 +361,10 @@ defmodule Deliberation do
   def block_options(block) do
     [
       %Option{
-        label: "Start deliberation",
-        icon: "hero-chat-bubble-left-right",
-        event: "deliberation_start",
-        block_id: block.id,
-        params: %BlockParams{block_id: block.id}
-      },
-      %Option{
-        label: "View deliberations",
-        icon: "hero-list-bullet",
-        event: "deliberation_view",
+        label: "Add argument",
+        icon: "hero-chat-bubble-left-ellipsis",
+        event: "deliberation_add_argument",
+        section: "Deliberation",
         block_id: block.id,
         params: %BlockParams{block_id: block.id}
       }

@@ -22,7 +22,8 @@ defmodule WikiWeb.BlockCardLive do
        ref_type: nil,
        is_owner: false,
        data_loaded: false,
-       subblocks: []
+       subblocks: [],
+       ext_items: []
      )}
   end
 
@@ -178,7 +179,7 @@ defmodule WikiWeb.BlockCardLive do
 
   @impl true
   def handle_event("block_extension_action", %{"ext-event" => event, "block-id" => block_id}, socket) do
-    send(self(), {:put_flash, :info, "#{event} triggered for block #{String.slice(block_id, 0, 8)}…"})
+    send(self(), {:block_extension_action, event, block_id})
     {:noreply, socket}
   end
 
@@ -220,8 +221,20 @@ defmodule WikiWeb.BlockCardLive do
       refs: load_refs(block.id),
       title_field: title_field,
       url_field: url_field,
+      ext_items: load_ext_items(block),
       data_loaded: true
     )
+  end
+
+  defp load_ext_items(block) do
+    block
+    |> Wiki.Block.Extensions.options_for()
+    |> Enum.flat_map(fn {_ext_name, opts} -> opts end)
+    |> Enum.group_by(& &1.section)
+    |> Enum.flat_map(fn {section, opts} ->
+      header = if section, do: [{:header, section}], else: []
+      header ++ Enum.map(opts, &{:action, &1})
+    end)
   end
 
   defp load_refs(block_id) do
@@ -373,6 +386,27 @@ defmodule WikiWeb.BlockCardLive do
                   >
                     <.icon name="hero-link" class="h-4 w-4 shrink-0" />
                     Add reference
+                  </button>
+                </li>
+                <%!-- Extension sections --%>
+                <li :if={@ext_items != []}>
+                  <hr class="border-base-200 -mx-1 my-0.5" />
+                </li>
+                <li :for={{type, item} <- @ext_items}>
+                  <span
+                    :if={type == :header}
+                    class="text-xs font-semibold uppercase tracking-wide opacity-40 pointer-events-none block px-1 py-0.5"
+                  >{item}</span>
+                  <button
+                    :if={type == :action}
+                    phx-click="block_extension_action"
+                    phx-value-ext-event={item.event}
+                    phx-value-block-id={item.block_id}
+                    phx-target={@myself}
+                    class="flex items-center gap-2 w-full"
+                  >
+                    <.icon :if={item.icon} name={item.icon} class="h-4 w-4 shrink-0" />
+                    {item.label}
                   </button>
                 </li>
               </ul>

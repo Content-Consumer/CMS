@@ -272,6 +272,11 @@ defmodule Deliberation.Web.ActivityLive do
     {:noreply, put_flash(socket, level, msg)}
   end
 
+  @impl true
+  def handle_info({:block_extension_action, _event, _block_id}, socket) do
+    {:noreply, socket}
+  end
+
   # ── Opinion events ───────────────────────────────────────────────────────────
 
   @impl true

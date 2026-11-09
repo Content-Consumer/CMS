@@ -129,6 +129,39 @@ defmodule WikiWeb.BlocksLive do
   end
 
   @impl true
+  def handle_info({:block_extension_action, "deliberation_add_argument", block_id}, socket) do
+    block = Enum.find(socket.assigns.blocks, &(&1.id == block_id))
+
+    case block do
+      nil ->
+        {:noreply, socket}
+
+      %{block_content: %{content: content}} when content != "" ->
+        activities = Deliberation.list_argument_activities()
+
+        {:noreply,
+         assign(socket,
+           text_selection: %{
+             block_id: block_id,
+             text: content,
+             from_ix: 0,
+             to_ix: String.length(content)
+           },
+           argdown_kind: "argument",
+           argdown_activities: activities
+         )}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Block has no content")}
+    end
+  end
+
+  @impl true
+  def handle_info({:block_extension_action, _event, _block_id}, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("text_selected", %{"block_id" => block_id, "text" => text, "from_ix" => from_ix, "to_ix" => to_ix}, socket) do
     activities = Deliberation.list_argument_activities()
 
