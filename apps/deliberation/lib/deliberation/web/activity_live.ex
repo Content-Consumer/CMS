@@ -17,6 +17,8 @@ defmodule Deliberation.Web.ActivityLive do
        vote_map: %{},
        voter_map: %{},
        rel_picker: nil,
+       rel_picker_mode: :create,
+       rel_picker_new_content: "",
        rel_search_query: "",
        rel_map: %{},
        rel_types: %{},
@@ -185,7 +187,7 @@ defmodule Deliberation.Web.ActivityLive do
     scope = socket.assigns.current_scope
 
     if scope && scope.user do
-      {:noreply, assign(socket, rel_picker: {id, type_name}, rel_search_query: "")}
+      {:noreply, assign(socket, rel_picker: {id, type_name}, rel_picker_mode: :create, rel_picker_new_content: "", rel_search_query: "")}
     else
       {:noreply, put_flash(socket, :error, "You must be logged in")}
     end
@@ -193,7 +195,12 @@ defmodule Deliberation.Web.ActivityLive do
 
   @impl true
   def handle_event("hide_rel_picker", _, socket) do
-    {:noreply, assign(socket, rel_picker: nil, rel_search_query: "")}
+    {:noreply, assign(socket, rel_picker: nil, rel_picker_mode: :create, rel_picker_new_content: "", rel_search_query: "")}
+  end
+
+  @impl true
+  def handle_event("set_rel_picker_mode", %{"mode" => mode}, socket) do
+    {:noreply, assign(socket, rel_picker_mode: String.to_existing_atom(mode))}
   end
 
   @impl true
@@ -213,19 +220,44 @@ defmodule Deliberation.Web.ActivityLive do
 
       case Wiki.BlockRelationship.create_relation(argument_id, statement_id, type.id) do
         {:ok, _} ->
-          block_ids = Enum.map(socket.assigns.block_kinds, & &1.block.id)
-          rel_map =
-            if block_ids == [],
-              do: %{},
-              else: Wiki.BlockRelationship.list_relations_for_blocks(block_ids)
-
           {:noreply,
            socket
-           |> assign(rel_map: rel_map, rel_picker: nil, rel_search_query: "")
-           |> apply_search(socket.assigns.search_query)}
+           |> assign(rel_picker: nil, rel_picker_mode: :create, rel_picker_new_content: "", rel_search_query: "")
+           |> load_activity_blocks(socket.assigns.activity.id)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, "Failed to add relation")}
+      end
+    end
+  end
+
+  @impl true
+  def handle_event("create_and_link_argument", %{"content" => content}, socket) do
+    scope = socket.assigns.current_scope
+
+    if is_nil(scope && scope.user) do
+      {:noreply, put_flash(socket, :error, "You must be logged in")}
+    else
+      content = String.trim(content)
+
+      if content == "" do
+        {:noreply, put_flash(socket, :error, "Argument content cannot be empty")}
+      else
+        {statement_id, type_name} = socket.assigns.rel_picker
+        type = socket.assigns.rel_types[type_name]
+        activity_id = socket.assigns.activity.id
+        user_id = scope.user.id
+
+        with {:ok, {block, _bk}} <- Deliberation.create_argument_block(content, activity_id, user_id),
+             {:ok, _} <- Wiki.BlockRelationship.create_relation(block.id, statement_id, type.id) do
+          {:noreply,
+           socket
+           |> assign(rel_picker: nil, rel_picker_mode: :create, rel_picker_new_content: "", rel_search_query: "")
+           |> load_activity_blocks(activity_id)}
+        else
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to create argument")}
+        end
       end
     end
   end
@@ -565,21 +597,46 @@ defmodule Deliberation.Web.ActivityLive do
               </button>
             </div>
             <div :if={@rel_picker && elem(@rel_picker, 0) == @focused_node.block.id} class="mt-3 pt-3 border-t border-base-200">
-              <p class="text-xs font-medium opacity-60 mb-2">
-                Pick an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this opinion:
-              </p>
-              <form phx-change="search_rel" phx-submit="search_rel" class="mb-2">
-                <input type="text" name="query" value={@rel_search_query} placeholder="Filter arguments…" phx-debounce="150" class="input input-sm input-bordered w-full" autofocus />
-              </form>
-              <div class="flex flex-col gap-1 max-h-56 overflow-y-auto">
-                <button :for={arg <- filter_argument_blocks(@block_kinds, @rel_search_query)} phx-click="create_rel" phx-value-argument-id={arg.block.id} class="btn btn-xs btn-ghost justify-start text-left h-auto py-2 whitespace-normal">
-                  {arg.block.block_content.content}
-                </button>
+              <div class="border border-base-300 rounded-xl bg-base-50 p-4">
+                <p class="text-xs font-medium opacity-60 mb-3">
+                  Add an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this opinion:
+                </p>
+                <div class="tabs tabs-box tabs-sm mb-3">
+                  <button phx-click="set_rel_picker_mode" phx-value-mode="create" class={"tab #{if @rel_picker_mode == :create, do: "tab-active"}"}>Create new</button>
+                  <button phx-click="set_rel_picker_mode" phx-value-mode="select" class={"tab #{if @rel_picker_mode == :select, do: "tab-active"}"}>Select existing</button>
+                </div>
+                <div :if={@rel_picker_mode == :create}>
+                  <form phx-submit="create_and_link_argument">
+                    <div id="tiptap-wrapper-rel-picker-node" phx-update="ignore">
+                      <div
+                        id="tiptap-editor-rel-picker-node"
+                        phx-hook="TiptapEditor"
+                        data-input-id="rel-picker-node-content"
+                        class="tiptap-editor bg-base-100 rounded-box border border-base-300 p-3 min-h-24 cursor-text text-sm"
+                      >
+                      </div>
+                    </div>
+                    <input type="hidden" name="content" id="rel-picker-node-content" value="" />
+                    <div class="flex justify-end mt-3">
+                      <button type="submit" class="btn btn-primary btn-sm">Create & link</button>
+                    </div>
+                  </form>
+                </div>
+                <div :if={@rel_picker_mode == :select}>
+                  <form phx-change="search_rel" phx-submit="search_rel" class="mb-2">
+                    <input type="text" name="query" value={@rel_search_query} placeholder="Filter arguments…" phx-debounce="150" class="input input-sm input-bordered w-full" autofocus />
+                  </form>
+                  <div class="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                    <button :for={arg <- filter_argument_blocks(@block_kinds, @rel_search_query)} phx-click="create_rel" phx-value-argument-id={arg.block.id} class="btn btn-xs btn-ghost justify-start text-left h-auto py-2 whitespace-normal">
+                      {arg.block.block_content.content}
+                    </button>
+                  </div>
+                  <div :if={filter_argument_blocks(@block_kinds, @rel_search_query) == []} class="text-xs opacity-50 py-2">
+                    {if argument_blocks(@block_kinds) == [], do: "No argument blocks in this activity yet.", else: "No arguments match your search."}
+                  </div>
+                </div>
+                <button phx-click="hide_rel_picker" class="btn btn-outline btn-info btn-xs mt-3">Cancel</button>
               </div>
-              <div :if={filter_argument_blocks(@block_kinds, @rel_search_query) == []} class="text-xs opacity-50 py-2">
-                {if argument_blocks(@block_kinds) == [], do: "No argument blocks in this activity yet.", else: "No arguments match your search."}
-              </div>
-              <button phx-click="hide_rel_picker" class="btn btn-ghost btn-xs mt-2">Cancel</button>
             </div>
           </div>
 
@@ -688,21 +745,46 @@ defmodule Deliberation.Web.ActivityLive do
                 </button>
               </div>
               <div :if={@rel_picker && elem(@rel_picker, 0) == bk.block.id} class="mt-3 pt-3 border-t border-base-200">
-                <p class="text-xs font-medium opacity-60 mb-2">
-                  Pick an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this opinion:
-                </p>
-                <form phx-change="search_rel" phx-submit="search_rel" class="mb-2">
-                  <input type="text" name="query" value={@rel_search_query} placeholder="Filter arguments…" phx-debounce="150" class="input input-sm input-bordered w-full" autofocus />
-                </form>
-                <div class="flex flex-col gap-1 max-h-56 overflow-y-auto">
-                  <button :for={arg <- filter_argument_blocks(@block_kinds, @rel_search_query)} phx-click="create_rel" phx-value-argument-id={arg.block.id} class="btn btn-xs btn-ghost justify-start text-left h-auto py-2 whitespace-normal">
-                    {arg.block.block_content.content}
-                  </button>
+                <div class="border border-base-300 rounded-xl bg-base-50 p-4">
+                  <p class="text-xs font-medium opacity-60 mb-3">
+                    Add an argument that <strong>{if elem(@rel_picker, 1) == "supports", do: "supports", else: "attacks"}</strong> this opinion:
+                  </p>
+                  <div class="tabs tabs-box tabs-sm mb-3">
+                    <button phx-click="set_rel_picker_mode" phx-value-mode="create" class={"tab #{if @rel_picker_mode == :create, do: "tab-active"}"}>Create new</button>
+                    <button phx-click="set_rel_picker_mode" phx-value-mode="select" class={"tab #{if @rel_picker_mode == :select, do: "tab-active"}"}>Select existing</button>
+                  </div>
+                  <div :if={@rel_picker_mode == :create}>
+                    <form phx-submit="create_and_link_argument">
+                      <div id="tiptap-wrapper-rel-picker-list" phx-update="ignore">
+                        <div
+                          id="tiptap-editor-rel-picker-list"
+                          phx-hook="TiptapEditor"
+                          data-input-id="rel-picker-list-content"
+                          class="tiptap-editor bg-base-100 rounded-box border border-base-300 p-3 min-h-24 cursor-text text-sm"
+                        >
+                        </div>
+                      </div>
+                      <input type="hidden" name="content" id="rel-picker-list-content" value="" />
+                      <div class="flex justify-end mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm">Create & link</button>
+                      </div>
+                    </form>
+                  </div>
+                  <div :if={@rel_picker_mode == :select}>
+                    <form phx-change="search_rel" phx-submit="search_rel" class="mb-2">
+                      <input type="text" name="query" value={@rel_search_query} placeholder="Filter arguments…" phx-debounce="150" class="input input-sm input-bordered w-full" autofocus />
+                    </form>
+                    <div class="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                      <button :for={arg <- filter_argument_blocks(@block_kinds, @rel_search_query)} phx-click="create_rel" phx-value-argument-id={arg.block.id} class="btn btn-xs btn-ghost justify-start text-left h-auto py-2 whitespace-normal">
+                        {arg.block.block_content.content}
+                      </button>
+                    </div>
+                    <div :if={filter_argument_blocks(@block_kinds, @rel_search_query) == []} class="text-xs opacity-50 py-2">
+                      {if argument_blocks(@block_kinds) == [], do: "No argument blocks in this activity yet.", else: "No arguments match your search."}
+                    </div>
+                  </div>
+                  <button phx-click="hide_rel_picker" class="btn btn-outline btn-info btn-xs mt-3">Cancel</button>
                 </div>
-                <div :if={filter_argument_blocks(@block_kinds, @rel_search_query) == []} class="text-xs opacity-50 py-2">
-                  {if argument_blocks(@block_kinds) == [], do: "No argument blocks in this activity yet.", else: "No arguments match your search."}
-                </div>
-                <button phx-click="hide_rel_picker" class="btn btn-ghost btn-xs mt-2">Cancel</button>
               </div>
               <div :if={@rel_map[bk.block.id] not in [nil, []]} class="mt-2 space-y-1">
                 <div :for={rel <- (@rel_map[bk.block.id] || [])} class="flex items-center gap-2 text-xs">

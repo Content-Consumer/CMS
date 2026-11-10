@@ -288,6 +288,14 @@ defmodule Deliberation do
   end
 
   def create_statement_block(content, group_activity_id, user_id \\ nil) do
+    create_block_with_kind(content, group_activity_id, "statement", user_id)
+  end
+
+  def create_argument_block(content, group_activity_id, user_id \\ nil) do
+    create_block_with_kind(content, group_activity_id, "argument", user_id)
+  end
+
+  defp create_block_with_kind(content, group_activity_id, kind, user_id) do
     Repo.transaction(fn ->
       with {:ok, block} <- Wiki.TextBlock.create_block(content, user_id),
            dim when not is_nil(dim) <- Dimension.get_dimension_by_title(@dimension_title),
@@ -296,7 +304,7 @@ defmodule Deliberation do
              Repo.insert(BlockKind.changeset(%BlockKind{}, %{
                block_id: block.id,
                group_activity_id: group_activity_id,
-               kind: "statement",
+               kind: kind,
                created_by_id: user_id
              })) do
         {block, block_kind}
