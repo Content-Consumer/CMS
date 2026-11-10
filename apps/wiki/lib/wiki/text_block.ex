@@ -30,6 +30,7 @@ defmodule Wiki.TextBlock do
 
   def get_all_blocks do
     Block
+    |> order_by([b], desc: b.inserted_at)
     |> Repo.all()
     |> Repo.preload(:block_content)
   end

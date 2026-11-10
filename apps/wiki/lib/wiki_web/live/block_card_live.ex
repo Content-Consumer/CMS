@@ -23,7 +23,9 @@ defmodule WikiWeb.BlockCardLive do
        is_owner: false,
        data_loaded: false,
        subblocks: [],
-       ext_items: []
+       ext_items: [],
+       is_long: false,
+       collapsed: false
      )}
   end
 
@@ -44,6 +46,11 @@ defmodule WikiWeb.BlockCardLive do
     else
       {:ok, socket}
     end
+  end
+
+  @impl true
+  def handle_event("toggle_collapsed", _, socket) do
+    {:noreply, assign(socket, collapsed: !socket.assigns.collapsed)}
   end
 
   @impl true
@@ -214,6 +221,9 @@ defmodule WikiWeb.BlockCardLive do
 
     block = Wiki.Repo.preload(block, :created_by)
 
+    word_count = block.block_content.content |> String.split() |> length()
+    is_long = word_count > 100
+
     assign(socket,
       block: block,
       title: title,
@@ -222,6 +232,8 @@ defmodule WikiWeb.BlockCardLive do
       title_field: title_field,
       url_field: url_field,
       ext_items: load_ext_items(block),
+      is_long: is_long,
+      collapsed: is_long,
       data_loaded: true
     )
   end
@@ -438,15 +450,29 @@ defmodule WikiWeb.BlockCardLive do
           {@title}
         </p>
         <%!-- Content --%>
-        <div
-          id={"argdown-#{@block.id}"}
-          phx-hook="ArgdownSelector"
-          data-block-id={@block.id}
-          data-subblocks={Jason.encode!(@subblocks)}
-          class="block-preview text-sm"
-        >
-          {render_markdown(@block.block_content.content)}
+        <div class={["relative", @collapsed && "max-h-32 overflow-hidden"]}>
+          <div
+            id={"argdown-#{@block.id}"}
+            phx-hook="ArgdownSelector"
+            data-block-id={@block.id}
+            data-subblocks={Jason.encode!(@subblocks)}
+            class="block-preview text-sm"
+          >
+            {render_markdown(@block.block_content.content)}
+          </div>
+          <div
+            :if={@collapsed}
+            class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-base-100 to-transparent pointer-events-none"
+          ></div>
         </div>
+        <button
+          :if={@is_long}
+          phx-click="toggle_collapsed"
+          phx-target={@myself}
+          class="btn btn-ghost btn-xs mt-1 text-xs opacity-50 hover:opacity-80"
+        >
+          {if @collapsed, do: "Show more", else: "Show less"}
+        </button>
         <%!-- Extra slot (deliberation-specific: votes, relationship buttons, etc.) --%>
         {render_slot(assigns[:extra] || [])}
         <%!-- Inline reference editor --%>
